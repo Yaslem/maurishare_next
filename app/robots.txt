@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard/
+Disallow: /search/
+
+Allow: /images/
+Allow: /static/
+Allow: /public/
+
+Disallow: /*?*
+
+Sitemap: https://maurisha.com/sitemap.xml
+
+Crawl-delay: 10
