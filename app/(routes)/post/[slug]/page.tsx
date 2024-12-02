@@ -6,7 +6,6 @@ import Post from "@/app/controllers/Post.server";
 import { getUserAuthenticated } from "@/app/services/auth.server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { type Post as PostType } from "@prisma/client";
 import ClientPost from "@/app/components/ClientPost";
 
 async function likePost(slug: string, isLikedByUser: boolean) {
