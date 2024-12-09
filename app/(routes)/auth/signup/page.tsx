@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import UserAuthForm from "@/app/components/UserAuthForm";
 import AuthServer from "@/app/controllers/Auth.server";
+import { sendResponseServer } from "@/app/helpers/SendResponse.server";
 
 async function signUp(formData: FormData) {
   "use server";
@@ -12,12 +13,17 @@ async function signUp(formData: FormData) {
   try {
     const result = await AuthServer.signUp(name, email, password);
     return result;
-  } catch (error) {
-    return { error: "حدث خطأ أثناء التسجيل" };
+  } catch {
+    return sendResponseServer<null>({
+      status: 'error',
+      message: 'حدث خطأ أثناء التسجيل',
+      data: null,
+      code: 400,
+      action: 'sign-up'
+    })
   }
 }
 
-// Metadata للصفحة
 export const metadata: Metadata = {
   title: "تسجيل حساب جديد 🔒",
   description: "قم بتسجيل حساب جديد للوصول إلى جميع الميزات والخدمات",

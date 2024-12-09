@@ -1,10 +1,12 @@
-import Validate from "../helpers/Validate";
-import {sendResponseServer} from "../helpers/SendResponse.server";
+import Validate from "@/app/helpers/Validate";
+import {sendResponseServer} from "@/app/helpers/SendResponse.server";
 import bcrypt from "bcryptjs"
-import db from "../helpers/db";
+import db from "@/app/helpers/db";
 import {nanoid} from "nanoid"
-import {getUserAuthenticated, signIn} from "../services/auth.server";
-import { redirect } from "next/navigation";
+import {signIn} from "@/app/services/auth.server";
+import { userResponse } from "./User.server";
+import { ZodFormattedError } from "zod";
+
 export default class AuthServer {
     static async getUserByEmail(email: string) {
         return await db.user.findUnique({where: {email}})
@@ -38,32 +40,40 @@ export default class AuthServer {
                                 socialLinks: {
                                     create: {}
                                 }
-                            }
+                            },
+                        include: {
+                            socialLinks: true,
+                            account: true
+                        }
                     })
-                    return sendResponseServer({status: "success", action: "signUp", message: "تم التسجيل بنجاح", data: user})
-                } catch (e) {
-                    return sendResponseServer({status: "error", action: "signUp", code: 400, message: "حدث خطأ ما."})
+                    return sendResponseServer<userResponse>({status: "success", action: "signUp", code: 200, data: user, message: "تم التسجيل بنجاح"})
+                } catch {
+                    return sendResponseServer<null>({status: "error", action: "signUp", code: 400, data: null, message: "حدث خطأ ما."})
                 }
             }else {
-                return sendResponseServer({status: "error", action: "signUp", code: 400, message: "المستخدم موجود بالفعل"})
+                return sendResponseServer<null>({status: "error", action: "signUp", code: 400, data: null, message: "المستخدم موجود بالفعل"})
             }
         }
-        return sendResponseServer({status: "error", action: "signUp", code: 400, message: "بعض البيانات مطلوبة.", data: validated.error.format()})
+        return sendResponseServer<ZodFormattedError<{ name: string; email: string; password: string; }, string>>({status: "error", action: "signUp", code: 400, data: validated.error.format(), message: "بعض البيانات مطلوبة."})
     }
     static async signIn(email: string, password: string) {
         const validated = Validate.signIn.safeParse({email, password})
         if(validated.success){
             const user = await AuthServer.getUserByEmail(email)
             if(!user){
-                return sendResponseServer({status: "error", action: "signIn", code: 400, message: "الحساب غير موجود."})
+                return sendResponseServer<null>({status: "error", action: "signIn", code: 400, data: null, message: "الحساب غير موجود."})
             }
             const checkPassword = await bcrypt.compare(password, user.password)
             if(!checkPassword){
-                return sendResponseServer({status: "error", action: "signIn", code: 400, message: "البيانات غير صحيحة، تأكد مرة أخرى"})
+                return sendResponseServer<null>({status: "error", action: "signIn", code: 400, data: null, message: "البيانات غير صحيحة، تأكد مرة أخرى"})
             }
 
             await signIn({email: user.email})
+            return sendResponseServer<null>({status: "success", action: "signIn", code: 200, data: null, message: "تم تسجيل الدخول بنجاح"})
         }
-        return sendResponseServer({status: "error", action: "signIn", code: 400, message: "بعض البيانات مطلوبة.", data: validated.error?.format()})
+        if(validated.error){
+            return sendResponseServer<ZodFormattedError<{ email: string; password: string; }, string>>({status: "error", action: "signIn", code: 400, data: validated.error.format(), message: "بعض البيانات مطلوبة."})
+        }
+        return sendResponseServer<null>({status: "error", action: "signIn", code: 400, data: null, message: "بعض البيانات مطلوبة."})
     }
 }

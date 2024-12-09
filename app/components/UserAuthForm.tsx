@@ -8,11 +8,21 @@ import { toast } from "react-hot-toast"
 import InputBox from "@/app/components/InputBox"
 import AnimationWrapper from "@/app/components/AnimationWrapper"
 import Validate from "@/app/helpers/Validate"
+import {type sendResponseServer } from "@/app/helpers/SendResponse.server"
+import {type ZodFormattedError } from "zod"
+import {type userResponse } from "@/app/controllers/User.server"
 
 type UserAuthFormProps = {
     type: 'sign-in' | 'sign-up'
-    signIn?: (formData: FormData) => Promise<any>
-    signUp?: (formData: FormData) => Promise<any>
+    signIn?: (formData: FormData) => Promise<Awaited<ReturnType<typeof sendResponseServer<ZodFormattedError<{
+        email: string;
+        password: string;
+    }, string> | null>>>>
+    signUp?: (formData: FormData) => Promise<Awaited<ReturnType<typeof sendResponseServer<ZodFormattedError<{
+        email: string;
+        name: string;
+        password: string;
+    }, string> | null | userResponse>>>>
 }
 
 export default function UserAuthForm({ type, signIn, signUp }: UserAuthFormProps) {
@@ -43,7 +53,8 @@ export default function UserAuthForm({ type, signIn, signUp }: UserAuthFormProps
                 }
 
                 const result = signIn && (await signIn(new FormData(e.target as HTMLFormElement)))
-                if (result.status === 'error') {
+                console.log(result)
+                if (result &&result.status === 'error') {
                     toast.error(result.message)
                 } else {
                     toast.success('تم تسجيل الدخول بنجاح')
@@ -64,7 +75,7 @@ export default function UserAuthForm({ type, signIn, signUp }: UserAuthFormProps
                     router.push('/auth/signin')
                 }
             }
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ ما')
         }
     }

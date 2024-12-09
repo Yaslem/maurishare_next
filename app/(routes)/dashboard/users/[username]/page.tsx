@@ -2,16 +2,24 @@ export const dynamic = 'force-dynamic'
 
 import { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getUserAuthenticated, updateUserAuthenticated } from '@/app/services/auth.server'
-import User from '@/app/controllers/User.server'
+import { getUserAuthenticated } from '@/app/services/auth.server'
+import User, { userResponse } from '@/app/controllers/User.server'
 import EditProfileForm from './index'
 
 interface PageProps {
-  params: { username: string }
+  params: Promise<{ username: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const userData = await User.getProfileByAdmin({ username: params.username })
+  const username = (await params).username
+  const userData = await User.getProfileByAdmin({ username })
+  
+  if (!userData.data) {
+    return {
+      title: "لا يوجد مستخدم",
+      description: "لا يوجد مستخدم بهذا الاسم"
+    }
+  }
   
   return {
     title: `معلومات ${userData.data.name} (@${userData.data.username}) - لوحة التحكم`,
@@ -23,7 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${process.env.BASE_URL}/dashboard/users/${userData.data.username}`,
       images: [
         {
-          url: userData.data.avatar || `${process.env.BASE_URL}/default-avatar.png`,
+          url: userData.data.photo || `${process.env.BASE_URL}/default-avatar.png`,
           width: 200,
           height: 200,
           alt: `صورة ${userData.data.name}`
@@ -34,7 +42,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary',
       title: `معلومات ${userData.data.name} (@${userData.data.username})`,
       description: userData.data.bio || `صفحة إدارة حساب ${userData.data.name}`,
-      images: [userData.data.avatar || `${process.env.BASE_URL}/default-avatar.png`]
+      images: [userData.data.photo || `${process.env.BASE_URL}/default-avatar.png`]
     },
     robots: {
       index: false,
@@ -43,11 +51,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export async function uploadUserPhoto(img: File) {
+async function uploadUserPhoto(img: File) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & { role: "ADMIN" | "USER" } | null
   
-  if (user.role !== "ADMIN") {
+  if (!user) {
+    return redirect('/auth/signin')
+  }
+  
+  if (user?.role !== "ADMIN") {
     return redirect('/')
   }
 
@@ -55,12 +67,12 @@ export async function uploadUserPhoto(img: File) {
   return { imgUrl }
 }
 
-export async function updateProfile(formData: FormData) {
+async function updateProfile(formData: FormData) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & { role: "ADMIN" | "USER" } | null
   
-  if (user.role !== "ADMIN") {
-    redirect('/')
+  if (!user || user.role !== "ADMIN") {
+    return redirect('/auth/signin')
   }
   
   const data = Object.fromEntries(formData)
@@ -82,21 +94,25 @@ export async function updateProfile(formData: FormData) {
       name: data.name as string,
       email: data.email as string
     })
-  } catch (error) {
+  } catch {
     return redirect('/')
   }
 }
 
 export default async function EditProfilePage({ params }: PageProps) {
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & { role: "ADMIN" | "USER" } | null
   
-  if (user.role !== "ADMIN") {
-    redirect('/')
+  if (!user || user.role !== "ADMIN") {
+    return redirect('/')
   }
 
-  const userData = await User.getProfileByAdmin({ username: params.username })
+  const username = (await params).username
+  const userData = await User.getProfileByAdmin({ username })
+  if (!userData || !userData.data) {
+    return redirect('/')
+  }
 
   return (
-    <EditProfileForm initialData={userData.data} onUpdateProfile={updateProfile} onUploadUserPhoto={uploadUserPhoto} />
+    <EditProfileForm initialData={userData.data as userResponse & { can_create_post: boolean, can_update_post: boolean, can_delete_post: boolean, can_create_comment: boolean, totalPosts: number, totalReads: number }} onUpdateProfile={updateProfile} onUploadUserPhoto={uploadUserPhoto} />
   )
 }

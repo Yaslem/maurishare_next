@@ -1,7 +1,58 @@
 import { sendResponseServer } from "../helpers/SendResponse.server";
-import db from "../helpers/db";
-import FileStorage from "../helpers/Upload.server";
+import db from "@/app/helpers/db";
+import FileStorage from "@/app/helpers/Upload.server";
 import { nanoid } from "nanoid";
+import {type Tag } from "@prisma/client";
+import { userResponse } from "./User.server";
+
+export interface PostResponse {
+    id: string;
+    title: string;
+    slug: string;
+    banner: string | null;
+    des: string | null;
+    isPublished: boolean;
+    publishedAt: Date;
+    content: string | null;
+    updatedAt: Date;
+    author: {
+        id: string;
+        name: string;
+        username: string;
+        photo: string;
+        socialLinks: {
+            youtube: string;
+            instagram: string;
+            facebook: string;
+            twitter: string;
+            website: string;
+        } | null;
+    };
+    tags: Tag[];
+    activity: {
+        totalLikes: number;
+        totalComments: number;
+        totalReads: number;
+    } | null;
+}
+
+export interface CommentResponse {
+    id: string;
+    content: string;
+    createdAt: Date;
+    commentedBy: {
+        name: string;
+        username: string;
+        photo: string;
+    } | null;
+    postAuthor: {
+        name: string;
+        username: string;
+        photo: string;
+    } | null;
+    parent: CommentResponse | null;
+    children: CommentResponse[];
+}
 
 export default class Post {
     static async uploadImg(image: File) {
@@ -33,31 +84,51 @@ export default class Post {
                 id: true,
                 title: true,
                 slug: true,
+                banner: true,
                 des: true,
                 isPublished: true,
-                banner: true,
-                activity: true,
-                tags: true,
                 publishedAt: true,
+                content: true,
+                updatedAt: true,
+                activity: true,
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 author: {
                     select: {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true,
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit,
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "getPosts", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{results: PostResponse[], count: number, page: number}>({ status: "success", action: "getPosts", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getPosts", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "getPosts", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async getPostsByUsername({ page = 1, username }: { page: number, username: string }) {
         const maxLimit = 5
@@ -80,9 +151,12 @@ export default class Post {
                 id: true,
                 title: true,
                 slug: true,
-                des: true,
-                                isPublished: true,
                 banner: true,
+                des: true,
+                isPublished: true,
+                publishedAt: true,
+                content: true,
+                updatedAt: true,
                 activity: {
                     select: {
                         totalComments: true,
@@ -90,27 +164,44 @@ export default class Post {
                         totalReads: true,
                     }
                 },
-                tags: true,
-                publishedAt: true,
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 author: {
                     select: {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true,
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit,
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "getPostsByUsername", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{results: PostResponse[], count: number, page: number}>({ status: "success", action: "getPostsByUsername", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getPostsByUsername", data: {count}, message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "getPostsByUsername", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async getPostsByAdmin({ page = 1 }: { page: number }) {
         const maxLimit = 5
@@ -127,9 +218,12 @@ export default class Post {
                 id: true,
                 title: true,
                 slug: true,
-                des: true,
                 banner: true,
+                des: true,
+                content: true,
+                updatedAt: true,
                 isPublished: true,
+                publishedAt: true,
                 activity: {
                     select: {
                         totalComments: true,
@@ -137,27 +231,44 @@ export default class Post {
                         totalReads: true,
                     }
                 },
-                tags: true,
-                publishedAt: true,
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 author: {
                     select: {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true,
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit,
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "getPostsByAdmin", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{results: PostResponse[], count: number, page: number}>({ status: "success", action: "getPostsByAdmin", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getPostsByAdmin", data: {count}, message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "getPostsByAdmin", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async getPostsDraftByUsername({ page = 1, username }: { page: number, username: string }) {
         const maxLimit = 5
@@ -180,9 +291,12 @@ export default class Post {
                 id: true,
                 title: true,
                 slug: true,
-                des: true,
-                                isPublished: true,
                 banner: true,
+                des: true,
+                content: true,
+                updatedAt: true,
+                isPublished: true,
+                publishedAt: true,
                 activity: {
                     select: {
                         totalComments: true,
@@ -190,27 +304,44 @@ export default class Post {
                         totalReads: true,
                     }
                 },
-                tags: true,
-                publishedAt: true,
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 author: {
                     select: {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true,
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit,
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "getPostsDraftByUsername", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{results: PostResponse[], count: number, page: number}>({ status: "success", action: "getPostsDraftByUsername", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getPostsDraftByUsername", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "getPostsDraftByUsername", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async getPostsDraftByAdmin({ page = 1 }: { page: number }) {
         const maxLimit = 5
@@ -227,9 +358,12 @@ export default class Post {
                 id: true,
                 title: true,
                 slug: true,
-                des: true,
                 banner: true,
+                des: true,
+                content: true,
+                updatedAt: true,
                 isPublished: true,
+                publishedAt: true,
                 activity: {
                     select: {
                         totalComments: true,
@@ -237,27 +371,44 @@ export default class Post {
                         totalReads: true,
                     }
                 },
-                tags: true,
-                publishedAt: true,
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 author: {
                     select: {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true,
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit,
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "getPostsDraftByAdmin", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{results: PostResponse[], count: number, page: number}>({ status: "success", action: "getPostsDraftByAdmin", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getPostsDraftByAdmin", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "getPostsDraftByAdmin", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async getPostBySlug({ slug }: { slug: string }) {
         const getPost = await db.post.findFirst({
@@ -272,6 +423,8 @@ export default class Post {
                     select: {
                         username: true,
                         name: true,
+                        photo: true,
+                        socialLinks: true,
                         account: {
                             select: {
                                 totalReads: true
@@ -324,6 +477,7 @@ export default class Post {
                     title: true,
                     slug: true,
                     des: true,
+                    updatedAt: true,
                     isPublished: true,
                     banner: true,
                     activity: {
@@ -346,13 +500,14 @@ export default class Post {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true,
                     }
                 },
                 },
             })
-            let tagsNames: string[] = []
-            post?.tags.map((tag: any) => tagsNames.push(tag.name))
+            const tagsNames: string[] = []
+            post?.tags.map((tag: Tag) => tagsNames.push(tag.name))
             const similar = await db.post.findMany({
                 where: {
                     draft: false,
@@ -370,6 +525,8 @@ export default class Post {
                 },
                 select: {
                     id: true,
+                    content: true,
+                    updatedAt: true,
                     title: true,
                     slug: true,
                     des: true,
@@ -383,7 +540,8 @@ export default class Post {
                             id: true,
                             photo: true,
                             username: true,
-                            name: true
+                            name: true,
+                            socialLinks: true,
                         }
                     }
                 },
@@ -393,10 +551,10 @@ export default class Post {
                 take: 5,
             })
             if (post) {
-                return sendResponseServer({ status: "success", action: "getPostBySlug", data: { post, similar }, message: "تم جلب المنشور بنجاح 👍" })
+                return sendResponseServer<{post: PostResponse, similar: PostResponse[]}>({ status: "success", action: "getPostBySlug", code: 200, data: { post, similar }, message: "تم جلب المنشور بنجاح 👍" })
             }
         }
-        return sendResponseServer({ status: "error", action: "getPostBySlug", message: "لا يوجد هذا المنشور" })
+        return sendResponseServer<null>({ status: "error", action: "getPostBySlug", code: 404, data: null, message: "لا يوجد هذا المنشور" })
     }
     static async getPostById({ id }: { id: string }) {
         const getPost = await db.post.findUnique({
@@ -412,20 +570,14 @@ export default class Post {
                 where: {
                     id: getPost.id
                 },
-                select: {
-                    id: true,
-                    content: true,
-                    title: true,
-                    slug: true,
-                    des: true,
-                    isPublished: true,
-                    banner: true,
-                    activity: {
+                include: {
+                    author: {
                         select: {
                             id: true,
-                            totalComments: true,
-                            totalLikes: true,
-                            totalReads: true
+                            photo: true,
+                            username: true,
+                            name: true,
+                            socialLinks: true,
                         }
                     },
                     tags: {
@@ -434,22 +586,14 @@ export default class Post {
                             name: true
                         }
                     },
-                    publishedAt: true,
-                    author: {
-                        select: {
-                            id: true,
-                            photo: true,
-                            username: true,
-                            name: true
-                        }
-                    },
-                },
+                    activity: true
+                }
             })
             if (post) {
-                return sendResponseServer({ status: "success", action: "getPostById", data: post, message: "تم جلب المنشور بنجاح 👍" })
+                return sendResponseServer<PostResponse>({ status: "success", action: "getPostById", code: 200, data: post, message: "تم جلب المنشور بنجاح 👍" })
             }
         }
-        return sendResponseServer({ status: "error", action: "getPostById", message: "لا يوجد هذا المنشور" })
+        return sendResponseServer<null>({ status: "error", action: "getPostById", code: 404, data: null, message: "لا يوجد هذا المنشور" })
     }
     static async likePost({ slug, userId, isLikedByUser }: { slug: string, userId: string, isLikedByUser: boolean }) {
         const getPost = await db.post.findFirst({
@@ -472,7 +616,7 @@ export default class Post {
             }
         })
         if (getPost) {
-            let totalLikes = (getPost.activity?.totalLikes || 0) + (isLikedByUser ? 1 : -1)
+            const totalLikes = (getPost.activity?.totalLikes || 0) + (isLikedByUser ? 1 : -1)
             const post = await db.post.update({
                 where: {
                     id: getPost.id
@@ -518,10 +662,10 @@ export default class Post {
                 })
             }
             if (post) {
-                return sendResponseServer({ status: "success", action: "likePost", message: "تم الإعجاب بالمنشور بنجاح 👍" })
+                return sendResponseServer<null>({ status: "success", action: "likePost", code: 200, data: null, message: "تم الإعجاب بالمنشور بنجاح 👍" })
             }
         }
-        return sendResponseServer({ status: "error", action: "likePost", message: "لا يوجد هذا المنشور" })
+        return sendResponseServer<null>({ status: "error", action: "likePost", code: 404, data: null, message: "لا يوجد هذا المنشور" })
     }
     static async addCommentPost({ slug, userId, comment }: { slug: string, userId: string, comment: string }) {
         const getPost = await db.post.findFirst({
@@ -546,7 +690,7 @@ export default class Post {
         })
         if (getPost) {
             if (!comment.length) {
-                return sendResponseServer({ status: "error", action: "addCommentPost", message: "محتوى التعليق مطلوب" })
+                return sendResponseServer<null>({ status: "error", action: "addCommentPost", code: 400, data: null, message: "محتوى التعليق مطلوب" })
             }
             const getComment = await db.comment.create({
                 data: {
@@ -562,8 +706,8 @@ export default class Post {
                     content: comment
                 }
             })
-            let totalComments = getPost.activity?.totalComments || 0
-            let totalParentComments = getPost.activity?.totalParentComments || 0
+            const totalComments = getPost.activity?.totalComments || 0
+            const totalParentComments = getPost.activity?.totalParentComments || 0
             const post = await db.post.update({
                 where: {
                     id: getPost.id
@@ -600,85 +744,69 @@ export default class Post {
                     where: {
                         id: getComment.id,
                     },
-                    select: {
-                        id: true,
-                        content: true,
-                        commentedBy: {
-                            select: {
-                                name: true,
-                                username: true,
-                                photo: true
-                            }
-                        },
-                        postAuthor: {
-                            select: {
-                                name: true,
-                                username: true,
-                                photo: true
+                    include: {
+                        commentedBy: true,
+                        postAuthor: true,
+                        parent: {
+                            include: {
+                                commentedBy: true,
+                                postAuthor: true
                             }
                         },
                         children: {
-                            select: {
-                                id: true,
-                                content: true,
-                                commentedBy: {
-                                    select: {
-                                        name: true,
-                                        username: true,
-                                        photo: true
-                                    }
-                                },
-                                postAuthor: {
-                                    select: {
-                                        name: true,
-                                        username: true,
-                                        photo: true
-                                    }
-                                },
-                                children: {
-                                    select: {
-                                        id: true,
-                                        content: true,
-                                        commentedBy: {
-                                            select: {
-                                                name: true,
-                                                username: true,
-                                                photo: true
-                                            }
-                                        },
-                                        postAuthor: {
-                                            select: {
-                                                name: true,
-                                                username: true,
-                                                photo: true
-                                            }
-                                        },
-                                        children: true,
-                                        parent: true,
-                                        createdAt: true
-                                    },
-                                    orderBy: {
-                                        createdAt: "desc"
-                                    },
-                                },
-                                parent: true,
-                                createdAt: true
-                            },
-                            orderBy: {
-                                createdAt: "desc"
-                            },
-                        },
-                        parent: true,
-                        createdAt: true,
-    
-                    },
-                })
-                return sendResponseServer({ status: "success", action: "addCommentPost", data: comment, message: "تم التعليق على المنشور بنجاح 👍" })
+                            include: {
+                                commentedBy: true,
+                                postAuthor: true
+                            }
+                        }
+                    }
+                });
+                if (comment) {
+                    const formattedComment: CommentResponse = {
+                        ...comment,
+                        parent: comment.parent ? {
+                            id: comment.parent.id,
+                            content: comment.parent.content,
+                            createdAt: comment.parent.createdAt,
+                            commentedBy: comment.parent.commentedBy ? {
+                                name: comment.parent.commentedBy.name,
+                                username: comment.parent.commentedBy.username,
+                                photo: comment.parent.commentedBy.photo
+                            } : null,
+                            postAuthor: comment.parent.postAuthor ? {
+                                name: comment.parent.postAuthor.name,
+                                username: comment.parent.postAuthor.username,
+                                photo: comment.parent.postAuthor.photo
+                            } : null,
+                            parent: null,
+                            children: []
+                        } : null,
+                        children: comment.children.map(child => ({
+                            id: child.id,
+                            content: child.content,
+                            createdAt: child.createdAt,
+                            commentedBy: child.commentedBy ? {
+                                name: child.commentedBy.name,
+                                username: child.commentedBy.username,
+                                photo: child.commentedBy.photo
+                            } : null,
+                            postAuthor: child.postAuthor ? {
+                                name: child.postAuthor.name,
+                                username: child.postAuthor.username,
+                                photo: child.postAuthor.photo
+                            } : null,
+                            parent: null,
+                            children: []
+                        }))
+                    };
+                    return sendResponseServer<CommentResponse>({ status: "success", action: "addCommentPost", code: 200, data: formattedComment, message: "تم التعليق على المنشور بنجاح 👍" });
+                }
+                return sendResponseServer<null>({ status: "error", action: "addCommentPost", code: 404, data: null, message: "فشل إضافة التعليق" });
             }
         }
-        return sendResponseServer({ status: "error", action: "addCommentPost", message: "لا يوجد هذا المنشور" })
+        return sendResponseServer<null>({ status: "error", action: "addCommentPost", code: 404, data: null, message: "لا يوجد هذا المنشور" })
     }
-    static async addReplyCommentPost({ slug, userId, replyingTo, comment, statusReply = "reply" }: { slug: string, userId: string, replyingTo: string, comment: string, statusReply: string }) {
+    static async addReplyCommentPost({ slug, userId, replyingTo, comment, statusReply = "reply" }: { slug: string, userId: string, replyingTo: string, comment: string, statusReply: "reply" | "repliedOnComment" }) {
         const getPost = await db.post.findFirst({
             where: {
                 slug,
@@ -701,10 +829,10 @@ export default class Post {
         })
         if (getPost) {
             if (!comment.length) {
-                return sendResponseServer({ status: "error", action: "addReplyCommentPost", message: "محتوى التعليق مطلوب" })
+                return sendResponseServer<null>({ status: "error", action: "addReplyCommentPost", code: 400, data: null, message: "محتوى التعليق مطلوب" })
             }
             if (!replyingTo.length) {
-                return sendResponseServer({ status: "error", action: "addReplyCommentPost", message: "التعليق المردود عليه مطلوب" })
+                return sendResponseServer<null>({ status: "error", action: "addReplyCommentPost", code: 400, data: null, message: "التعليق المردود عليه مطلوب" })
             }
             const getComment = await db.comment.create({
                 data: {
@@ -731,8 +859,8 @@ export default class Post {
                     }
                 }
             })
-            let totalComments = getPost.activity?.totalComments || 0
-            let totalParentComments = getPost.activity?.totalParentComments || 0
+            const totalComments = getPost.activity?.totalComments || 0
+            const totalParentComments = getPost.activity?.totalParentComments || 0
             const post = await db.post.update({
                 where: {
                     id: getPost.id
@@ -789,42 +917,67 @@ export default class Post {
                     where: {
                         id: getComment.id
                     },
-                    select: {
-                        id: true,
-                        content: true,
-                        commentedBy: {
-                            select: {
-                                name: true,
-                                username: true,
-                                photo: true
-                            }
-                        },
-                        postAuthor: {
-                            select: {
-                                name: true,
-                                username: true,
-                                photo: true
+                    include: {
+                        commentedBy: true,
+                        postAuthor: true,
+                        parent: {
+                            include: {
+                                commentedBy: true,
+                                postAuthor: true
                             }
                         },
                         children: {
-                            select: {
-                                id: true,
-                                content: true,
+                            include: {
                                 commentedBy: true,
-                                postAuthor: true,
-                                children: true,
-                                parent: true,
-                                createdAt: true
+                                postAuthor: true
                             }
-                        },
-                        parent: true,
-                        createdAt: true
+                        }
                     }
                 })
-                return sendResponseServer({ status: "success", action: "addReplyCommentPost", data: comment, message: "تم الرد على التعليق بنجاح 👍" })
+                if (comment) {
+                    const formattedComment: CommentResponse = {
+                        ...comment,
+                        parent: comment.parent ? {
+                            id: comment.parent.id,
+                            content: comment.parent.content,
+                            createdAt: comment.parent.createdAt,
+                            commentedBy: comment.parent.commentedBy ? {
+                                name: comment.parent.commentedBy.name,
+                                username: comment.parent.commentedBy.username,
+                                photo: comment.parent.commentedBy.photo
+                            } : null,
+                            postAuthor: comment.parent.postAuthor ? {
+                                name: comment.parent.postAuthor.name,
+                                username: comment.parent.postAuthor.username,
+                                photo: comment.parent.postAuthor.photo
+                            } : null,
+                            parent: null,
+                            children: []
+                        } : null,
+                        children: comment.children.map(child => ({
+                            id: child.id,
+                            content: child.content,
+                            createdAt: child.createdAt,
+                            commentedBy: child.commentedBy ? {
+                                name: child.commentedBy.name,
+                                username: child.commentedBy.username,
+                                photo: child.commentedBy.photo
+                            } : null,
+                            postAuthor: child.postAuthor ? {
+                                name: child.postAuthor.name,
+                                username: child.postAuthor.username,
+                                photo: child.postAuthor.photo
+                            } : null,
+                            parent: null,
+                            children: []
+                        }))
+                    };  
+                    return sendResponseServer<CommentResponse>({ status: "success", action: "addReplyCommentPost", code: 200, data: formattedComment, message: "تم الرد على التعليق بنجاح 👍" })
+                }
+                return sendResponseServer<null>({ status: "error", action: "addReplyCommentPost", code: 404, data: null, message: "فشل إضافة الرد" });
             }
         }
-        return sendResponseServer({ status: "error", action: "addReplyCommentPost", message: "لا يوجد هذا التعليق" })
+        return sendResponseServer<null>({ status: "error", action: "addReplyCommentPost", code: 404, data: null, message: "لا يوجد هذا التعليق" })
     }
     static async deleteCommentPost({ slug, userId, commentId }: { slug: string, userId: string, commentId: string }) {
         const getPost = await db.post.findFirst({
@@ -850,7 +1003,7 @@ export default class Post {
         })
         if (getPost) {
             if (!commentId.length) {
-                return sendResponseServer({ status: "error", action: "deleteCommentPost", message: "معرف التعليق مطلوب" })
+                return sendResponseServer<null>({ status: "error", action: "deleteCommentPost", code: 400, data: null, message: "معرف التعليق مطلوب" })
             }
             const comment = await db.comment.findUnique({
                 where: {
@@ -869,8 +1022,8 @@ export default class Post {
             })
             if (userId) {
                 if (userId === comment?.commentedBy?.id || userId === getPost.author.id) {
-                    let totalComments = getPost.activity?.totalComments || 0
-                    let totalParentComments = getPost.activity?.totalParentComments || 0
+                    const totalComments = getPost.activity?.totalComments || 0
+                    const totalParentComments = getPost.activity?.totalParentComments || 0
                     if (comment?.children.length) {
                         if (comment.children[0]?.children?.length) {
                             await db.comment.delete({
@@ -932,15 +1085,15 @@ export default class Post {
                         })
                     }
                 } else {
-                    return sendResponseServer({ status: "success", action: "deleteCommentPost", message: "لا يمكنك حذف التعليق" })
+                    return sendResponseServer<null>({ status: "success", action: "deleteCommentPost", code: 400, data: null, message: "لا يمكنك حذف التعليق" })
                 }
             } else {
-                return sendResponseServer({ status: "success", action: "deleteCommentPost", message: "يرجى تسجيل الدخول" })
+                return sendResponseServer<null>({ status: "success", action: "deleteCommentPost", code: 400, data: null, message: "يرجى تسجيل الدخول" })
             }
 
-            return sendResponseServer({ status: "success", action: "deleteCommentPost", message: "تم حذف التعليق بنجاح 👍" })
+            return sendResponseServer<null>({ status: "success", action: "deleteCommentPost", code: 200, data: null, message: "تم حذف التعليق بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "deleteCommentPost", message: "لا يوجد هذا التعليق" })
+        return sendResponseServer<null>({ status: "error", action: "deleteCommentPost", code: 404, data: null, message: "لا يوجد هذا التعليق" })
     }
     static async getIslikeUserPost({ slug, userId }: { slug: string, userId: string }) {
         const getPost = await db.post.findFirst({
@@ -1066,10 +1219,27 @@ export default class Post {
                 skip: (page - 1) * maxLimit,
             })
             if (comments.length) {
-                return sendResponseServer({ status: "success", action: "getCommentsPost", data: { results: comments, count, page }, message: "تم جلب تعليقات المنشور بنجاح 👍" })
+                const formattedComments: CommentResponse[] = comments.map(comment => ({
+                    id: comment.id,
+                    content: comment.content,
+                    createdAt: comment.createdAt,
+                    commentedBy: comment.commentedBy,
+                    postAuthor: comment.postAuthor,
+                    parent: null,
+                    children: comment.children.map(child => ({
+                        id: child.id,
+                        content: child.content,
+                        createdAt: child.createdAt,
+                        commentedBy: child.commentedBy,
+                        postAuthor: child.postAuthor,
+                        parent: null,
+                        children: []
+                    }))
+                }));
+                return sendResponseServer<{ results: CommentResponse[], count: number, page: number }>({ status: "success", action: "getCommentsPost", code: 200, data: { results: formattedComments, count, page }, message: "تم جلب تعليقات المنشور بنجاح 👍" })
             }
         }
-        return sendResponseServer({ status: "error", action: "getCommentsPost", message: "لا توجد تعليقات" })
+        return sendResponseServer<null>({ status: "error", action: "getCommentsPost", code: 404, data: null, message: "لا توجد تعليقات" })
     }
     static async search({ tag, page = 1 }: { tag: string, page: number }) {
         const maxLimit = 5
@@ -1104,6 +1274,8 @@ export default class Post {
                 slug: true,
                 des: true,
                 isPublished: true,
+                content: true,
+                updatedAt: true,
                 banner: true,
                 activity: true,
                 tags: true,
@@ -1113,20 +1285,33 @@ export default class Post {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "searchPost", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{ results: PostResponse[], count: number, page: number }>({ status: "success", action: "searchPost", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "searchPost", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "searchPost", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async searchQuery({ value, page = 1 }: { value: string, page: number }) {
         const maxLimit = 5
@@ -1152,6 +1337,8 @@ export default class Post {
                 title: true,
                 slug: true,
                 des: true,
+                content: true,
+                updatedAt: true,
                 isPublished: true,
                 banner: true,
                 activity: {
@@ -1168,22 +1355,35 @@ export default class Post {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "searchQueryPost", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{ results: PostResponse[], count: number, page: number }>({ status: "success", action: "searchQueryPost", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "searchQueryPost", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "searchQueryPost", code: 404, data: null, message: "لا توجد منشورات" })
     }
-    static async searchQueryByUser({user, value, page = 1 }: { value: string, page: number, user: any }) {
+    static async searchQueryByUser({user, value, page = 1 }: { value: string, page: number, user: userResponse }) {
         const maxLimit = 5
         const count = await db.post.count({
             where: {
@@ -1209,6 +1409,8 @@ export default class Post {
                 title: true,
                 slug: true,
                 des: true,
+                content: true,
+                updatedAt: true,
                 isPublished: true,
                 banner: true,
                 activity: {
@@ -1225,20 +1427,33 @@ export default class Post {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "searchQueryByUser", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{ results: PostResponse[], count: number, page: number }>({ status: "success", action: "searchQueryByUser", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "searchQueryByUser", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "searchQueryByUser", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async searchDraftQuery({ value, page = 1 }: { value: string, page: number }) {
         const maxLimit = 5
@@ -1264,6 +1479,8 @@ export default class Post {
                 des: true,
                 isPublished: true,
                 banner: true,
+                content: true,
+                updatedAt: true,
                 activity: {
                     select: {
                         totalComments: true,
@@ -1278,22 +1495,35 @@ export default class Post {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "searchDraftQuery", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{ results: PostResponse[], count: number, page: number }>({ status: "success", action: "searchDraftQuery", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "searchDraftQuery", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "searchDraftQuery", code: 404, data: null, message: "لا توجد منشورات" })
     }
-    static async searchDraftQueryByUser({user, value, page = 1 }: { value: string, page: number, user: any }) {
+    static async searchDraftQueryByUser({user, value, page = 1 }: { value: string, page: number, user: userResponse }) {
         const maxLimit = 5
         const count = await db.post.count({
             where: {
@@ -1319,6 +1549,8 @@ export default class Post {
                 des: true,
                 isPublished: true,
                 banner: true,
+                content: true,
+                updatedAt: true,
                 activity: {
                     select: {
                         totalComments: true,
@@ -1333,20 +1565,33 @@ export default class Post {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true
                     }
                 }
             },
-            orderBy: {
-                publishedAt: "asc"
-            },
+            orderBy: [
+                {
+                    activity: {
+                        totalReads: "asc"
+                    }
+                },
+                {
+                    activity: {
+                        totalLikes: "asc"
+                    }
+                },
+                {
+                    publishedAt: "asc"
+                }
+            ],
             take: maxLimit,
             skip: (page - 1) * maxLimit
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "searchDraftQueryByUser", data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
+            return sendResponseServer<{ results: PostResponse[], count: number, page: number }>({ status: "success", action: "searchDraftQueryByUser", code: 200, data: { results: posts, count, page }, message: "تم جلب المنشورات بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "searchDraftQueryByUser", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "searchDraftQueryByUser", code: 404, data: null, message: "لا توجد منشورات" })
     }
     static async trending() {
         const maxLimit = 5
@@ -1359,15 +1604,26 @@ export default class Post {
                 id: true,
                 title: true,
                 slug: true,
-                activity: true,
+                banner: true,
+                des: true,
+                content: true,
+                updatedAt: true,
                 isPublished: true,
                 publishedAt: true,
+                activity: true,
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 author: {
                     select: {
                         id: true,
                         photo: true,
                         username: true,
-                        name: true
+                        name: true,
+                        socialLinks: true
                     }
                 }
             },
@@ -1389,16 +1645,16 @@ export default class Post {
             take: maxLimit
         })
         if (posts.length) {
-            return sendResponseServer({ status: "success", action: "getPosts", data: posts, message: "تم جلب المنشورات الشائعة بنجاح 👍" })
+            return sendResponseServer<PostResponse[]>({ status: "success", action: "getPosts", code: 200, data: posts, message: "تم جلب المنشورات الشائعة بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getPosts", message: "لا توجد منشورات" })
+        return sendResponseServer<null>({ status: "error", action: "getPosts", code: 404, data: null, message: "لا توجد منشورات" })
     }
-    static async create({ title, img, des, tags, content, draft, user }: { title: string, img: string, des: string, tags: string[], content: string, draft: boolean, user: any }) {
-        let newContent = content.replaceAll("uploads", '/uploads').replaceAll("//uploads", '/uploads')
-        let newTags: any[] = []
+    static async create({ title, img, des, tags, content, draft, user }: { title: string, img: string, des: string, tags: string[], content: string, draft: boolean, user: userResponse }) {
+        const newContent = content.replaceAll("uploads", '/uploads').replaceAll("//uploads", '/uploads')
+        const newTags: Tag[] = []
         const slug = title.replaceAll(" ", "-").trim() + nanoid()
         if (!title.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "عنوان المنشور مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null, message: "عنوان المنشور مطلوب" })
         }
 
         if (draft) {
@@ -1413,19 +1669,19 @@ export default class Post {
                     authorId: user.id,
                 }
             })
-            return sendResponseServer({ status: "success", action: "createPost", message: "تم حفظ المنشور كمسودة بنجاح 👍" })
+            return sendResponseServer<null>({ status: "success", action: "createPost", code: 200, data: null, message: "تم حفظ المنشور كمسودة بنجاح 👍" })
         }
         if (!img.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "صورة المنشور مطلوبة." })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null, message: "صورة المنشور مطلوبة." })
         }
         if (!newContent.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "اكتب شيئا ما." })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null, message: "اكتب شيئا ما." })
         }
         if (!des.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "الوصف القصير للمنشور مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null, message: "الوصف القصير للمنشور مطلوب" })
         }
         if (!tags.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "أضف وسما أو اثنين" })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null  , message: "أضف وسما أو اثنين" })
         }
 
         await Promise.all(tags.map(async tag => {
@@ -1435,7 +1691,7 @@ export default class Post {
                 }
             })
             if (existingTag) {
-                newTags.push({ id: existingTag.id })
+                newTags.push({ id: existingTag.id, name: existingTag.name })
             } else {
                 await db.tag.create({
                     data: {
@@ -1447,7 +1703,9 @@ export default class Post {
                         name: tag
                     }
                 })
-                newTags.push({ id: getTag?.id })
+                if(getTag){
+                    newTags.push({ id: getTag?.id, name: getTag?.name })
+                }
             }
         }))
 
@@ -1462,13 +1720,31 @@ export default class Post {
                 authorId: user.id,
                 activity: { create: {} },
                 tags: {
-                    connect: newTags,
+                    connect: newTags.map(tag => ({ id: tag.id })),
                 }
+            },
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        photo: true,
+                        username: true,
+                        name: true,
+                        socialLinks: true
+                    }
+                },
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                activity: true
             }
-        })
+        });
 
         const account = await db.accountInfo.findFirst({ where: { userId: user.id } })
-        let totalPosts = account?.totalPosts || 0
+        const totalPosts = account?.totalPosts || 0
         await db.accountInfo.update({
             where: {
                 id: account?.id
@@ -1477,11 +1753,11 @@ export default class Post {
                 totalPosts: (totalPosts + 1)
             }
         })
-        return sendResponseServer({ status: "success", action: "createPost", data: post, message: "تم إنشاء المنشور بنجاح 👍" })
+        return sendResponseServer<PostResponse>({ status: "success", action: "createPost", code: 200, data: post, message: "تم إنشاء المنشور بنجاح 👍" })
     }
-    static async delete({ postId, user }: { postId: string, user: any }) {        
+    static async delete({ postId, user }: { postId: string, user: userResponse }) {        
         if (!postId.length) {
-            return sendResponseServer({ status: "error", action: "deletePost", message: "المنشور مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "deletePost", code: 400, data: null, message: "المنشور مطلوب" })
         }
         await db.post.delete({
             where: {
@@ -1490,7 +1766,7 @@ export default class Post {
         })
 
         const account = await db.accountInfo.findFirst({ where: { userId: user.id } })
-        let totalPosts = account?.totalPosts || 0
+        const totalPosts = account?.totalPosts || 0
         await db.accountInfo.update({
             where: {
                 id: account?.id
@@ -1499,11 +1775,11 @@ export default class Post {
                 totalPosts: (totalPosts - 1)
             }
         })
-        return sendResponseServer({ status: "success", action: "deletePost", data: {postId}, message: "تم حذف المنشور بنجاح 👍" })
+        return sendResponseServer<{ postId: string }>({ status: "success", action: "deletePost", code: 200, data: {postId}, message: "تم حذف المنشور بنجاح 👍" })
     }
     static async publish({ postId, value }: { postId: string, value: boolean }) {
         if (!postId.length) {
-            return sendResponseServer({ status: "error", action: "publishPost", message: "المنشور مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "publishPost", code: 400, data: null, message: "المنشور مطلوب" })
         }
         await db.post.update({
             where: {
@@ -1514,13 +1790,13 @@ export default class Post {
             }
         })
 
-        return sendResponseServer({ status: "success", action: "publishPost", data: {postId}, message: "تم تحديث المنشور بنجاح 👍" })
+        return sendResponseServer<{ postId: string }>({ status: "success", action: "publishPost", code: 200, data: {postId}, message: "تم تحديث المنشور بنجاح 👍" })
     }
-    static async edit({ title, img, des, tags, content, draft, id }: { title: string, img: string, des: string, tags: string[], content: string, draft: boolean, user: any, id: string }) {
-        let newContent = content.replaceAll("uploads", '/uploads').replaceAll("//uploads", '/uploads')
-        let newTags: any[] = []
+    static async edit({ title, img, des, tags, content, draft, id }: { title: string, img: string, des: string, tags: string[], content: string, draft: boolean, user: userResponse, id: string }) {
+        const newContent = content.replaceAll("uploads", '/uploads').replaceAll("//uploads", '/uploads')
+        const newTags: Tag[] = []
         if (!title.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "عنوان المنشور مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null, message: "عنوان المنشور مطلوب" })
         }
 
         if (draft) {
@@ -1536,19 +1812,19 @@ export default class Post {
                     draft,
                 }
             })
-            return sendResponseServer({ status: "success", action: "createPost", message: "تم تعديل المنشور كمسودة بنجاح 👍" })
+            return sendResponseServer<null>({ status: "success", action: "createPost", code: 200, data: null, message: "تم تعديل المنشور كمسودة بنجاح 👍" })
         }
         if (!img.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "صورة المنشور مطلوبة." })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null  , message: "صورة المنشور مطلوبة." })
         }
         if (!newContent.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "اكتب شيئا ما." })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null  , message: "اكتب شيئا ما." })
         }
         if (!des.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "الوصف القصير للمنشور مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null  , message: "الوصف القصير للمنشور مطلوب" })
         }
         if (!tags.length) {
-            return sendResponseServer({ status: "error", action: "createPost", message: "أضف وسما أو اثنين" })
+            return sendResponseServer<null>({ status: "error", action: "createPost", code: 400, data: null  , message: "أضف وسما أو اثنين" })
         }
 
         await Promise.all(tags.map(async tag => {
@@ -1558,7 +1834,7 @@ export default class Post {
                 }
             })
             if (existingTag) {
-                newTags.push({ id: existingTag.id })
+                newTags.push({ id: existingTag.id, name: existingTag.name })
             } else {
                 await db.tag.create({
                     data: {
@@ -1570,7 +1846,9 @@ export default class Post {
                         name: tag
                     }
                 })
-                newTags.push({ id: getTag?.id })
+                if(getTag){
+                    newTags.push({ id: getTag?.id, name: getTag?.name })
+                }
             }
         }))
 
@@ -1579,7 +1857,22 @@ export default class Post {
                 id
             },
             include: {
-                tags: true
+                author: {
+                    select: {
+                        id: true,
+                        photo: true,
+                        username: true,
+                        name: true,
+                        socialLinks: true
+                    }
+                },
+                tags: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                activity: true
             }
         })
 
@@ -1624,10 +1917,13 @@ export default class Post {
             },
             data: {
                 tags: {
-                    connect: newTags,
+                    connect: newTags.map(tag => ({ id: tag.id })),
                 }
             }
         })
-        return sendResponseServer({ status: "success", action: "createPost", data: post, message: "تم تعديل المنشور بنجاح 👍" })
+        if (post) {
+            return sendResponseServer<PostResponse>({ status: "success", action: "createPost", code: 200, data: post, message: "تم تعديل المنشور بنجاح 👍" });
+        }
+        return sendResponseServer<null>({ status: "error", action: "createPost", code: 404, data: null, message: "فشل تعديل المنشور" });
     }
 }

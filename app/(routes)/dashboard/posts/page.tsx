@@ -6,6 +6,7 @@ import DashboardPostsIndex from './index'
 import Post from "@/app/controllers/Post.server"
 import { getUserAuthenticated } from '@/app/services/auth.server'
 import { revalidatePath } from 'next/cache'
+import { userResponse } from '@/app/controllers/User.server'
 
  async function searchPosts(value: string) {
   "use server"
@@ -19,8 +20,9 @@ import { revalidatePath } from 'next/cache'
 
   async function deletePost(postId: string) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & { can_delete_post: boolean }
   if (!user) redirect('/auth/signin')
+  if (!user.can_delete_post) return redirect('/dashboard/posts')
 
   const response = await Post.delete({ 
     postId, 
@@ -57,6 +59,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function generateMetadata(): Promise<Metadata> {
   const user = await getUserAuthenticated()
+  if (!user) redirect('/auth/signin')
   return {
     title: `لوحة التحكم - المنشورات | ${user.name}`,
     description: `إدارة المنشورات والمسودات الخاصة بـ ${user.name}. قم بتحرير، حذف وإدارة جميع مقالاتك من مكان واحد.`,
@@ -74,13 +77,9 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default async function DashboardPostsPage({
-  searchParams,
-}: {
-  searchParams: { tap?: string }
-}) {
+export default async function DashboardPostsPage() {
 
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & { can_delete_post: boolean }
   if (!user) redirect('/auth/signin')
   const posts = await Post.getPostsByUsername({ page: 1, username: user.username })
   const drafts = await Post.getPostsDraftByUsername({ page: 1, username: user.username })
@@ -93,7 +92,6 @@ export default async function DashboardPostsPage({
       initialPosts={posts}
       initialDrafts={drafts}
       user={user}
-      defaultTab={searchParams.tap === 'draft' ? 1 : 0}
     />
   )
 }

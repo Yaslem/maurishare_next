@@ -2,9 +2,9 @@
 import { useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { type User } from "@prisma/client"
+import { userResponse } from "@/app/controllers/User.server"
 
-const SideNav = ({newNotification, user} : {newNotification: boolean, user: User}) => {
+const SideNav = ({newNotification, user} : {newNotification: boolean, user: userResponse & { role: "ADMIN" | "USER" }}) => {
     const pathname = usePathname()
     const location = usePathname().split("/")[2]
     function getPathName(pathname: string){
@@ -18,9 +18,9 @@ const SideNav = ({newNotification, user} : {newNotification: boolean, user: User
     }
     const [page, setPage] = useState(getPathName(location))
     const [showSideNav, setShowSideNav] = useState(false)
-    let activeTapLine = useRef<HTMLHRElement | null>(null)
-    let sideBarIcon = useRef<HTMLButtonElement | null>(null)
-    let pageStateTap = useRef<HTMLButtonElement | null>(null)
+    const activeTapLine = useRef<HTMLHRElement | null>(null)
+    const sideBarIcon = useRef<HTMLButtonElement | null>(null)
+    const pageStateTap = useRef<HTMLButtonElement | null>(null)
 
     const changePageState = (e: React.MouseEvent<HTMLButtonElement>) => {
         const { offsetWidth, offsetLeft, offsetParent } = e.target as HTMLButtonElement                    
@@ -63,22 +63,22 @@ const SideNav = ({newNotification, user} : {newNotification: boolean, user: User
                     {
                         user.role === "ADMIN"
                             ? <>
-                                <Link className={"sidebar-link " + (pathname === "/dashboard/all-posts" ? "active" : "")} href={"/dashboard/all-posts"} onClick={e => setPage(e.target.innerText)}>
+                                <Link className={"sidebar-link " + (pathname === "/dashboard/all-posts" ? "active" : "")} href={"/dashboard/all-posts"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                                     <i className="fi fi-rr-border-all"></i>
                                     المنشورات
                                 </Link>
-                                <Link className={"sidebar-link " + (pathname === "/dashboard/users" ? "active" : "")} href={"/dashboard/users"} onClick={e => setPage(e.target.innerText)}>
+                                <Link className={"sidebar-link " + (pathname === "/dashboard/users" ? "active" : "")} href={"/dashboard/users"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                                     <i className="fi fi-rr-users-alt"></i>
                                     المستخدمون
                                 </Link>
                             </>
                             : null
                     }
-                    <Link className={"sidebar-link " + (pathname === "/dashboard/posts" ? "active" : "")} href={"/dashboard/posts"} onClick={e => setPage(e.target.innerText)}>
+                    <Link className={"sidebar-link " + (pathname === "/dashboard/posts" ? "active" : "")} href={"/dashboard/posts"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                         <i className="fi fi-rr-document"></i>
                         {user.role === "ADMIN" ? "منشوراتي" : "المنشورات"}
                     </Link>
-                    <Link className={"sidebar-link " + (pathname === "/dashboard/notifications" ? "active" : "")} href={"/dashboard/notifications"} onClick={e => setPage(e.target.innerText)}>
+                    <Link className={"sidebar-link " + (pathname === "/dashboard/notifications" ? "active" : "")} href={"/dashboard/notifications"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                         <div className="relative">
                         <i className="fi fi-rr-bell"></i>
                             {
@@ -89,17 +89,17 @@ const SideNav = ({newNotification, user} : {newNotification: boolean, user: User
                         </div>
                         الإشعارات
                     </Link>
-                    <Link className={"sidebar-link " + (pathname === "/post/create" ? "active" : "")} href={"/post/create"} onClick={e => setPage(e.target.innerText)}>
+                    <Link className={"sidebar-link " + (pathname === "/post/create" ? "active" : "")} href={"/post/create"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                         <i className="fi fi-rr-file-edit"></i>
                         اكتب
                     </Link>
                     <h1 className="text-xl text-dark-grey mt-20 mb-3 ">إعدادات الحساب</h1>
                     <hr  className="border-grey -mr-6 mb-8 ml-6"/>
-                    <Link className={"sidebar-link " + (pathname === "/dashboard/edit-profile" ? "active" : "")} href={"/dashboard/edit-profile"} onClick={e => setPage(e.target.innerText)}>
+                    <Link className={"sidebar-link " + (pathname === "/dashboard/edit-profile" ? "active" : "")} href={"/dashboard/edit-profile"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                         <i className="fi fi-rr-user"></i>
                         تعديل الملف الشخصي
                     </Link>
-                    <Link className={"sidebar-link " + (pathname === "/dashboard/change-password" ? "active" : "")} href={"/dashboard/change-password"} onClick={e => setPage(e.target.innerText)}>
+                    <Link className={"sidebar-link " + (pathname === "/dashboard/change-password" ? "active" : "")} href={"/dashboard/change-password"} onClick={e => setPage((e.currentTarget as HTMLAnchorElement).innerText)}>
                         <i className="fi fi-rr-lock"></i>
                         تغيير كلمة المرور
                     </Link>

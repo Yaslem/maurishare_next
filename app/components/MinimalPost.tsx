@@ -1,9 +1,10 @@
 import Link from "next/link"
-import getDay from "../common/Date"
+import getDay from "@/app/common/Date"
 import Image from "next/image"
+import { type PostResponse } from "@/app/controllers/Post.server"
 
-const MinimalPost = ({ post, index }: { post: any, index: number }) => {
-    let { slug, publishedAt, title, author: { name, photo, username } } = post
+const MinimalPost = ({ post, index }: { post: PostResponse, index: number }) => {
+    const { slug, publishedAt, title, author: { name, photo, username } } = post
     return (
         <Link href={`/post/${slug}`} className="flex gap-5 mb-8">
             <h1 className="blog-index">{index < 10 ? "0" + (index + 1) : (index + 1)}</h1>

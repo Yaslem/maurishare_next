@@ -1,5 +1,16 @@
 import {createSlice} from '@reduxjs/toolkit';
 
+type PostState = {
+    id: string,
+    title: string,
+    draft: boolean | null,
+    action: "create" | "update",
+    img: string,
+    content: string,
+    des: string,
+    tags: string[],
+}
+
 export const postSlice = createSlice({
     name: 'post',
     initialState: {
@@ -12,7 +23,7 @@ export const postSlice = createSlice({
         des: "",
         tags: [],
 
-    },
+    } as PostState,
     reducers: {
         setId: (state, action) => {
             state.id = action.payload;
@@ -27,7 +38,6 @@ export const postSlice = createSlice({
             state.action = action.payload;
         },
         setImg: (state, action) => {
-            console.log(action.payload)
             state.img = action.payload;
         },
         setContent: (state, action) => {

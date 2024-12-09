@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import type { MetadataRoute } from 'next'
 import db from '@/app/helpers/db'
 
@@ -72,7 +73,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return allRoutes.map(route => ({
     url: `${process.env.BASE_URL}${route.path}`,
     lastModified: route.lastmod,
-    changeFrequency: route.changefreq,
+    changeFrequency: route.changefreq as "daily" | "monthly" | "weekly" | "always" | "hourly" | "yearly" | "never",
     priority: route.priority
   }));
 }

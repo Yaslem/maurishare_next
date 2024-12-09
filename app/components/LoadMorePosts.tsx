@@ -1,27 +1,41 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import AnimationWrapper from "./AnimationWrapper"
 import PostCard from "./PostCard"
 import NoDataMessage from "./NoDataMessage"
 import LoadMoreDataBtn from "./LoadMoreDataBtn"
+import { sendResponseServer } from "../helpers/SendResponse.server"
+import { PostResponse } from "../controllers/Post.server"
+import { userResponse } from "../controllers/User.server"
 
-export default function LoadMorePosts({ initialPosts, loadMoreAction, username }: { initialPosts: any, loadMoreAction: (username: string, page: number) => Promise<any>, username: string }) {
+interface LoadMorePostsProps {
+    initialPosts: Awaited<ReturnType<typeof sendResponseServer<{results: PostResponse[], page: number, count: number} | null>>>;
+    loadMoreAction: (username: string, page: number) => Promise<Awaited<ReturnType<typeof sendResponseServer<{results: PostResponse[], page: number, count: number} | null>>>>;
+    username: string;
+}
+
+export default function LoadMorePosts({ initialPosts, loadMoreAction, username }: LoadMorePostsProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [isLoading, setIsLoading] = useState(false)
 
   async function loadMore() {
     setIsLoading(true)
-    const newPosts = await loadMoreAction(username, posts.data.page + 1)
+    const newPosts = await loadMoreAction(username, posts.data ? posts.data.page + 1 : 1)
     
     if (newPosts.status !== "error") {
-      setPosts((prev: any) => ({
-        ...newPosts,
-        data: {
-          ...newPosts.data,
-          results: [...prev.data.results, ...newPosts.data.results]
+      setPosts((prev: typeof posts) => {
+        if (prev.data && newPosts.data) {
+          return {
+            ...newPosts,
+            data: {
+              ...newPosts.data,
+              results: [...prev.data.results, ...newPosts.data.results]
+            }
+          }
         }
-      }))
+        return prev
+      })
     }
     setIsLoading(false)
   }
@@ -32,15 +46,17 @@ export default function LoadMorePosts({ initialPosts, loadMoreAction, username }
         <NoDataMessage message={posts.message} />
       ) : (
         <>
-          {posts.data.results.map((post: any, i: number) => (
+          {posts.data?.results.map((post: PostResponse, i: number) => (
             <AnimationWrapper 
               transition={{ duration: 1, delay: i * 0.1 }} 
               key={post.id}
             >
-              <PostCard content={post} author={post.author} />
+              <PostCard post={post} author={post.author as userResponse} />
             </AnimationWrapper>
           ))}
-          <LoadMoreDataBtn isPending={isLoading} state={posts} getDataPagination={loadMore} />
+          {posts.data ? (
+            <LoadMoreDataBtn isPending={isLoading} state={posts} getDataPagination={loadMore} />
+          ) : null}
         </>
       )}
     </>

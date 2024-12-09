@@ -2,9 +2,19 @@
 
 import { useState } from "react"
 import toast from "react-hot-toast"
+import { userResponseInPost } from "./ClientPost";
 
-const CommentField = ({ action, user, replyingTo, statusReply, placeholder, message, onComment, onReply } : { action: string, user: any, replyingTo: number, statusReply: string, placeholder: string, message: string, onComment: any, onReply: any }) => {
-    let toastId : string;
+interface CommentFieldProps {
+    action: string;
+    user: userResponseInPost | null;
+    replyingTo: string;
+    statusReply: "reply" | "comment" | "repliedOnComment";
+    placeholder: string;
+    message: string;
+    onComment?: (comment: string) => Promise<{status: string}>;
+    onReply?: ({comment, replyingTo, statusReply}: {comment: string, replyingTo: string, statusReply: "reply" | "repliedOnComment"}) => Promise<{status: string}>;
+}
+const CommentField = ({ action, user, replyingTo, statusReply, placeholder, message, onComment, onReply } : CommentFieldProps) => {
     const [comment, setComment] = useState("")
     
     const handelComment = async () => {
@@ -14,11 +24,9 @@ const CommentField = ({ action, user, replyingTo, statusReply, placeholder, mess
             } else if(!comment.length){
                 toast.error("رجاء اكتب شيئا ما.")
             } else {
-                toastId = toast.loading("يتم إضافة التعليق...")
-                const result = await onComment(comment)
-                if (result.status === 'success') {
+                const result = onComment ? await onComment(comment) : null
+                if (result && result.status === 'success') {
                     setComment("")
-                    toast.dismiss(toastId)
                 }
             }
         } else if(action === "رد"){
@@ -27,16 +35,13 @@ const CommentField = ({ action, user, replyingTo, statusReply, placeholder, mess
             } else if(!comment.length){
                 toast.error("رجاء اكتب شيئا ما.")
             } else {
-                toastId = toast.loading("يتم إضافة الرد...")
-                const result = await onReply({
+                const result = onReply ? await onReply({
                     comment,
                     replyingTo,
-                    action: "reply",
-                    statusReply
-                })
-                if (result.status === 'success') {
+                    statusReply: statusReply as "reply" | "repliedOnComment"
+                }) : null
+                if (result && result.status === 'success') {
                     setComment("")
-                    toast.dismiss(toastId)
                 }
                 
             }

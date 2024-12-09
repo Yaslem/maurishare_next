@@ -1,7 +1,8 @@
 import SideNav from "@/app/components/SideNav";
 import { getUserAuthenticated } from '@/app/services/auth.server';
-import User from '@/app/controllers/User.server';
+import User, { userResponse } from '@/app/controllers/User.server';
 import { Metadata } from 'next';
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "الرئيسية",
@@ -14,9 +15,10 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getUserAuthenticated();
-  console.log(user)
-  
+  const user = await getUserAuthenticated() as userResponse & { role: "ADMIN" | "USER" } | null;
+  if (!user) {
+    return redirect('/')
+  }
   const newNotification = await User.getNewNotification(user.username);
   const hasNewNotifications = newNotification.status === "success";
 

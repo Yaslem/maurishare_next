@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import getDay from '../common/Date';
 import Image from 'next/image';
-const PostCard = ({ content, author }: { content: any, author: any }) => {
-    let { id, slug, publishedAt, title, tags, des, banner, activity: { totalLikes } } = content
-    let { name, photo, username } = author
+import { type PostResponse } from '@/app/controllers/Post.server';
+import { type userResponse } from '@/app/controllers/User.server';
+const PostCard = ({ post, author }: { post: PostResponse, author: userResponse }) => {
+    const { slug, publishedAt, title, des, banner } = post
+    const { name, photo, username } = author
 
     return (
         <div className='flex items-center gap-8 border-b border-grey pb-5 mb-4'>
@@ -21,7 +23,7 @@ const PostCard = ({ content, author }: { content: any, author: any }) => {
                     </Link>
                 </div>
                 <Link href={`/post/${slug}`} className='h-28 aspect-square bg-grey'>
-                    <Image src={banner} className='w-full h-full aspect-square object-cover' alt={title} width={100} height={100}/>
+                    <Image src={banner || ""} className='w-full h-full aspect-square object-cover' alt={title} width={100} height={100}/>
                 </Link>
             </div>
     )

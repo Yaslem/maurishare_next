@@ -2,9 +2,20 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
+import { type PostResponse } from "@/app/controllers/Post.server"
+import { type userResponse } from "@/app/controllers/User.server"
 
-const PostInteraction = ({ post, user, isLikeUser, commentWrapper, setCommentWrapper, onLike } : { post: any, user: any, isLikeUser: boolean, commentWrapper: boolean, setCommentWrapper: any, onLike: any }) => {
-    let [totalLikes, setTotalLikes] = useState(parseInt(post.activity.totalLikes))
+interface PostInteractionProps {
+    post: PostResponse & { activity: { totalLikes: number, totalComments: number }};
+    user: userResponse;
+    isLikeUser: boolean;
+    commentWrapper: boolean;
+    setCommentWrapper: (value: boolean) => void;
+    onLike: () => Promise<void>;
+}
+
+const PostInteraction = ({ post, user, isLikeUser, commentWrapper, setCommentWrapper, onLike } : PostInteractionProps) => {
+    const [totalLikes, setTotalLikes] = useState(post.activity?.totalLikes || 0)
     const [isLikedByUser, setIsLikedByUser] = useState(isLikeUser)
     const [location, setLocation] = useState("")
     useEffect(() => {
@@ -14,7 +25,7 @@ const PostInteraction = ({ post, user, isLikeUser, commentWrapper, setCommentWra
     const handeLike = async () => {
         if(user){
             setIsLikedByUser(!isLikedByUser)
-            let inc = !isLikedByUser ? totalLikes +=1 : totalLikes-=1
+            const inc = !isLikedByUser ? totalLikes + 1 : totalLikes - 1
             setTotalLikes(inc)
             await onLike()
             
@@ -39,7 +50,7 @@ const PostInteraction = ({ post, user, isLikeUser, commentWrapper, setCommentWra
                             </button>
                             : <p className="text-xl text-dark-grey">التعليقات: </p>
                     }
-                    <p className="text-xl text-dark-grey">{post.activity.totalComments}</p>
+                    <p className="text-xl text-dark-grey">{post.activity?.totalComments || 0}</p>
                 </div>
                 <div className="flex gap-6 items-center">
                     {

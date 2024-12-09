@@ -1,4 +1,4 @@
-export function NotAllowed({message}){
+export function NotAllowed({message}: {message: string}){
     return (
         <div
             className={"border p-4 shadow-inner flex-col max-w-fit mt-5 mx-auto rounded-lg border-black/10 flex items-center gap-4"}>

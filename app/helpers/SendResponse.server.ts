@@ -1,11 +1,11 @@
-interface Args {
-    status?: string,
-    code?: number,
-    message?: string,
+interface Args<T> {
+    status: "success" | "error",
+    code: number,
+    message: string,
     action: string,
-    data?: any
+    data: T
 }
-export const sendResponseServer = ({ status, code, message, action, data }: Args) => {
+export const sendResponseServer = <T>({ status, code, message, action, data }: Args<T>) => {
     return {
         data: data,
         action: action,

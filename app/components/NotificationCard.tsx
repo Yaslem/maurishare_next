@@ -2,13 +2,26 @@
 
 import Link from "next/link"; // تغيير الاستيراد
 import getDay from "@/app/common/Date";
+import {type userResponse, type notificationResponse } from "@/app/controllers/User.server";
+import {type CommentResponse, type PostResponse} from "@/app/controllers/Post.server";
+import Image from "next/image";
 
-const NotificationCard = ({ notification } : {notification: any}) => {   
+interface NotificationCardProps {
+    notification: notificationResponse & {
+        user: userResponse,
+        repliedOnComment: CommentResponse | null,
+        reply: CommentResponse | null,
+        comment: CommentResponse | null,
+        post: PostResponse
+    }
+}
+
+export default function NotificationCard({ notification } : NotificationCardProps) {   
     console.log(notification)
     return (
         <div className={"p-6 border-b border-grey border-r-black " + (!notification.seen ? "border-r-2" : null)}>
             <div className="flex gap-5 mb-3">
-                <img className="w-14 h-14 flex-none rounded-full" src={`/uploads/${notification.user.photo}`} />
+                <Image className="w-14 h-14 flex-none rounded-full" src={`/uploads/${notification.user.photo}`} alt={notification.user.name} width={56} height={56}/>
                 <div className="w-full">
                     <h1 className="font-semibold text-base text-dark-grey">
                         <span className="font-normal">
@@ -35,15 +48,15 @@ const NotificationCard = ({ notification } : {notification: any}) => {
                                     notification.type === "REPLY"
                                         ? notification.repliedOnComment
                                             ? <p>{notification.repliedOnComment.content}</p>
-                                            : <p>{notification.reply.content}</p>
-                                        : <p>{notification.comment.content}</p>
+                                            : <p>{notification.reply?.content}</p>
+                                        : <p>{notification.comment?.content}</p>
                                 }
                             </div>
                             : notification.type === "COMMENT"
                                 ? <div className="flex mt-4 flex-col gap-2">
                                     <Link className="text-black underline" href={`/post/${notification.post.slug}`}>{notification.post.title}</Link>
                                     <div className="p-4 rounded-md bg-grey">
-                                        <p>{notification.comment.content}</p>
+                                        <p>{notification.comment?.content}</p>
                                     </div>
                                 </div>
                                 : <Link className="underline mt-4 text-dark-grey line-clamp-1 font-medium" href={`/post/${notification.post.slug}`}>{notification.post.title}</Link>
@@ -57,4 +70,3 @@ const NotificationCard = ({ notification } : {notification: any}) => {
         </div>
     )
 }
-export default NotificationCard

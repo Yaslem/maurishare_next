@@ -1,0 +1,35 @@
+BASE_URL="http://localhost:3000"
+SITE_NAME="موريشير"
+SITE_DESCRIPTION="منصة مورشير - المنصة الموريتانية الرائدة في نشر الأبحاث العلمية المحكمة والدراسات الأكاديمية. اكتشف آلاف البحوث في مجالات الطب، الهندسة، العلوم الإنسانية، والشريعة من جامعات موريتانيا المعتمدة"
+SITE_KEYWORDS="أبحاث علمية موريتانيا, دراسات أكاديمية موريتانية, رسائل ماجستير, أطروحات دكتوراه, جامعة نواكشوط, المعهد العالي للدراسات والبحوث الإسلامية, بحوث محكمة, مجلات علمية موريتانية, أبحاث أكاديمية, منشورات علمية, مجلات محكمة, التعليم العالي موريتانيا, البحث العلمي, الدراسات الأكاديمية, جامعات موريتانيا"
+SITE_AUTHOR="مورشير"
+AUTH_SECRET="0d256b914bacf54e340a10177355a916"
+BASE_URL_API="http://localhost:3000/api"
+# DATABASE_URL="mysql://maurisho_yeslem:w4NBzXjxt;8C@45.41.235.156:3306/maurisho_maurishare"
+DATABASE_URL="mysql://root:@localhost:3306/maurishare1?pool_timeout=0"
+NEXTAUTH_URL="http://localhost:3000"
+
+SITE_URL="https://maurishire.com"
+SITE_PHONE="+222 49 47 49 68"
+SITE_EMAIL="info@maurishire.com"
+SITE_CITY="العيون"
+SITE_REGION="الحوض الغربي"
+SITE_POSTAL_CODE="12345"
+SITE_ADDRESS="الحوض الغربي"
+SITE_TWITTER_HANDLE="@maurishire"
+
+
+GOOGLE_CLIENT_ID="233838391083-3k56g9uaqvmhcsvfm0hvm7gtagts7ms1.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="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"
+
+RESEND_API_KEY="re_RBCTzmWe_F3pmSFNh5EkQDEymVJQvxn5r"
+
+EDITOR_API_KEY="jc310rvlu02i8ml51knh2pn1fdeh6xr8o1b21fsffsrlu4p2"
+
+PAGINATE_LIMIT=8
+PASSING_DEGREE_IN_ELEMENTARY=85
+PASSING_DEGREE_IN_HIGH=10
+
+TITLE_ELEMENTARY="مسابقة دخول سنة أولى إعدادية"
+TITLE_MIDDLE="مسابقة ختم الدروس الإعدادية"
+TITLE_HIGH="مسابقة ختم الدروس الثانوية"

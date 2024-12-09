@@ -3,12 +3,12 @@ export const dynamic = 'force-dynamic'
 import { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getUserAuthenticated, updateUserAuthenticated } from '@/app/services/auth.server'
-import User from '@/app/controllers/User.server'
+import User, { type userResponse } from '@/app/controllers/User.server'
 import EditProfileForm from './index'
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse
   
   return {
     title: `تعديل الملف الشخصي لـ ${user.name} (@${user.username}) - منصة التواصل الاجتماعي`,
@@ -29,19 +29,21 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export async function uploadUserPhoto(img: File) {
+ async function uploadUserPhoto(img: File) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse
+  if(!user) return redirect("/auth/signin")
   const imgUrl = await User.uploadImg(img, user.username)
   await updateUserAuthenticated({
+    ...user,
     photo: imgUrl
   })
   return { imgUrl }
 }
 
-export async function updateProfile(formData: FormData) {
+ async function updateProfile(formData: FormData) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse
   
   if (!user) {
     redirect('/')
@@ -61,7 +63,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export default async function EditProfilePage() {
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse
   const userData = await User.getProfile({ username: user.username })
 
   return (

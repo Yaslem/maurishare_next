@@ -3,8 +3,14 @@
 import { toast } from 'react-hot-toast'
 import InputBox from '@/app/components/InputBox'
 import {useState } from 'react'
+import { type sendResponseServer } from '@/app/helpers/SendResponse.server'
 
-export default function ChangePasswordForm({onLogOut, onChangePassword}: {onLogOut: () => Promise<void>, onChangePassword: (formData: FormData) => Promise<{ status: string | undefined, code: number, message: string, action: string, data: any }>}) {
+interface ChangePasswordFormProps {
+  onLogOut: () => Promise<void>,
+  onChangePassword: (formData: FormData) => Promise<Awaited<ReturnType<typeof sendResponseServer<null>>>>
+}
+
+export default function ChangePasswordForm({onLogOut, onChangePassword}: ChangePasswordFormProps) {
   const [pending, setPending] = useState(false)
 
   const handleSubmit = async (formData: FormData) => {

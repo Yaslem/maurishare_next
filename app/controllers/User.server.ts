@@ -1,12 +1,42 @@
-
 import bcrypt from "bcryptjs"
-
-import { sendResponseServer } from "../helpers/SendResponse.server";
-import fileService from "../helpers/Upload.server";
-import db from "../helpers/db";
-import { NotificationType } from "@prisma/client";
-import { getUserAuthenticated } from "../services/auth.server";
+import { sendResponseServer } from "@/app/helpers/SendResponse.server";
+import fileService from "@/app/helpers/Upload.server";
+import db from "@/app/helpers/db";
+import { AccountInfo, NotificationType } from "@prisma/client";
+import { getUserAuthenticated } from "@/app/services/auth.server";
 import { redirect } from "next/navigation";
+
+export interface userResponse {
+    name: string;
+    id: string;
+    email: string;
+    username: string;
+    bio: string | null;
+    createdAt: Date;
+    photo: string;
+    socialLinks: {
+        twitter: string;
+        facebook: string;
+        website: string;
+        youtube: string;
+        instagram: string;
+    } | null;
+    account: AccountInfo | null;
+}
+
+export interface notificationResponse {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    userId: string;
+    type: NotificationType;
+    seen: boolean;
+    notificationForId: string;
+    postId: string;
+    repliedOnCommentId: string | null;
+    commentId: string | null;
+    commentReplyId: string | null;
+}
 
 export default class User {
     static async getProfile({ username }: { username: string }) {
@@ -35,9 +65,9 @@ export default class User {
             },
         })
         if (user) {
-            return sendResponseServer({ status: "success", action: "getUserProfile", data: user, message: "تم جلب المستخدم بنجاح 👍" })
+            return sendResponseServer<userResponse>({ status: "success", action: "getUserProfile", code: 200, data: user, message: "تم جلب المستخدم بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getUserProfile", message: "هذا المستخدم غير موجود" })
+        return sendResponseServer<null>({ status: "error", action: "getUserProfile", code: 404, data: null, message: "هذا المستخدم غير موجود" })
     }
     static async getProfileByAdmin({ username }: { username: string }) {
         const user = await db.user.findUnique({
@@ -75,9 +105,9 @@ export default class User {
             },
         })
         if (user) {
-            return sendResponseServer({ status: "success", action: "getUserProfile", data: user, message: "تم جلب المستخدم بنجاح 👍" })
+            return sendResponseServer<userResponse>({ status: "success", action: "getUserProfile", code: 200, data: user, message: "تم جلب المستخدم بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getUserProfile", message: "هذا المستخدم غير موجود" })
+        return sendResponseServer<null>({ status: "error", action: "getUserProfile", code: 404, data: null, message: "هذا المستخدم غير موجود" })
     }
     static async getAllUsers(){
         const users = await db.user.findMany({
@@ -88,43 +118,53 @@ export default class User {
                 email: true,
                 bio: true,
                 name: true,
-                createdAt: true
+                createdAt: true,
+                socialLinks: {
+                    select: {
+                        instagram: true,
+                        facebook: true,
+                        twitter: true,
+                        youtube: true,
+                        website: true
+                    }
+                },
+                account: true
             },
         })
         if (users.length) {
-            return sendResponseServer({ status: "success", action: "getAllUsers", data: users, message: "تم جلب المستخدمين بنجاح 👍" })
+            return sendResponseServer<userResponse[]>({ status: "success", action: "getAllUsers", code: 200, data: users, message: "تم جلب المستخدمين بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "getAllUsers", message: "لا يوجد مستخدمين" })
+        return sendResponseServer<null>({ status: "error", action: "getAllUsers", code: 404, data: null, message: "لا يوجد مستخدمين" })
     }
     static async editProfile({ username, instagram, newUsername, bio, facebook, twitter, youtube, website }: { username: string, instagram: string, newUsername: string, bio: string, facebook: string, twitter: string, youtube: string, website: string }) {
         const bioLimit = 150
         if (!newUsername.length) {
-            return sendResponseServer({ status: "error", action: "editProfile", message: "اسم المستخدم مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: "اسم المستخدم مطلوب" })
         }
         if (bio.length > bioLimit) {
-            return sendResponseServer({ status: "error", action: "editProfile", message: `الوصف المختصر يجب أن يكون أقل من ${bioLimit} حرفا.` })
+            return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الوصف المختصر يجب أن يكون أقل من ${bioLimit} حرفا.` })
         }
         if (facebook.length) {
             if (!facebook.includes(`https://`) || !facebook.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${facebook}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${facebook}" غير صالح.` })
             }
         }
 
         if (instagram.length) {
             if (!instagram.includes(`https://`) || !instagram.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${instagram}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${instagram}" غير صالح.` })
             }
         }
 
         if (twitter.length) {
             if (!twitter.includes(`https://`) || !twitter.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${twitter}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${twitter}" غير صالح.` })
             }
         }
 
         if (youtube.length) {
             if (!youtube.includes(`https://`) || !youtube.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${youtube}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${youtube}" غير صالح.` })
             }
         }
 
@@ -138,7 +178,7 @@ export default class User {
             },
         })
         if (user && user.username !== username) {
-            return sendResponseServer({ status: "error", action: "editProfile", message: `اسم الحساب "${newUsername}" مستخدم بالفعل من قِبل شخص آخر,` })
+            return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `اسم الحساب "${newUsername}" مستخدم بالفعل من قِبل شخص آخر,` })
         }
         await db.user.update({
             where: { username },
@@ -156,37 +196,37 @@ export default class User {
                 }
             }
         })
-        return sendResponseServer({ status: "success", action: "editProfile", message: "تم تعديل الحساب بنجاح." })
+        return sendResponseServer<null>({ status: "success", action: "editProfile", code: 200, data: null, message: "تم تعديل الحساب بنجاح." })
     }
     static async editProfileByAdmin({ username, instagram, newUsername, bio, facebook, twitter, youtube, website, name, email, can_update_post,can_create_post,can_delete_post, can_create_comment }: { username: string, instagram: string, newUsername: string, bio: string, facebook: string, twitter: string, youtube: string, website: string, name: string, email: string, can_update_post: boolean,can_create_post: boolean,can_delete_post: boolean, can_create_comment: boolean }) {
         const bioLimit = 150
         if (!newUsername.length) {
-            return sendResponseServer({ status: "error", action: "editProfile", message: "اسم المستخدم مطلوب" })
+            return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: "اسم المستخدم مطلوب" })
         }
         if (bio.length > bioLimit) {
-            return sendResponseServer({ status: "error", action: "editProfile", message: `الوصف المختصر يجب أن يكون أقل من ${bioLimit} حرفا.` })
+            return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الوصف المختصر يجب أن يكون أقل من ${bioLimit} حرفا.` })
         }
         if (facebook.length) {
             if (!facebook.includes(`https://`) || !facebook.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${facebook}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${facebook}" غير صالح.` })
             }
         }
 
         if (instagram.length) {
             if (!instagram.includes(`https://`) || !instagram.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${instagram}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${instagram}" غير صالح.` })
             }
         }
 
         if (twitter.length) {
             if (!twitter.includes(`https://`) || !twitter.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${twitter}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${twitter}" غير صالح.` })
             }
         }
 
         if (youtube.length) {
             if (!youtube.includes(`https://`) || !youtube.includes(`.com`)) {
-                return sendResponseServer({ status: "error", action: "editProfile", message: `الرابط "${youtube}" غير صالح.` })
+                return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `الرابط "${youtube}" غير صالح.` })
             }
         }
 
@@ -200,7 +240,7 @@ export default class User {
             },
         })
         if (user && user.username !== username) {
-            return sendResponseServer({ status: "error", action: "editProfile", message: `اسم الحساب "${newUsername}" مستخدم بالفعل من قِبل شخص آخر,` })
+            return sendResponseServer<null>({ status: "error", action: "editProfile", code: 400, data: null, message: `اسم الحساب "${newUsername}" مستخدم بالفعل من قِبل شخص آخر,` })
         }
         await db.user.update({
             where: { username },
@@ -219,7 +259,7 @@ export default class User {
                 }
             }
         })
-        return sendResponseServer({ status: "success", action: "editProfile", message: "تم تعديل الحساب بنجاح." })
+        return sendResponseServer<null>({ status: "success", action: "editProfile", code: 200, data: null, message: "تم تعديل الحساب بنجاح." })
     }
     static async searchQuery({ value }: { value: string }) {
         const maxLimit = 50
@@ -240,16 +280,29 @@ export default class User {
             },
             select: {
                 id: true,
-                photo: true,
+                name: true,
                 username: true,
-                name: true
+                photo: true,
+                email: true,
+                bio: true,
+                createdAt: true,
+                socialLinks: {
+                    select: {
+                        instagram: true,
+                        facebook: true,
+                        twitter: true,
+                        youtube: true,
+                        website: true
+                    }
+                },
+                account: true
             },
             take: maxLimit,
         })
         if (users.length) {
-            return sendResponseServer({ status: "success", action: "searchQueryUser", data: users, message: "تم جلب المستخدمين بنجاح 👍" })
+            return sendResponseServer<userResponse[]>({ status: "success", action: "searchQueryUser", code: 200, data: users, message: "تم جلب المستخدمين بنجاح 👍" })
         }
-        return sendResponseServer({ status: "error", action: "searchQueryUser", message: "لا توجد مستخدمون" })
+        return sendResponseServer<null>({ status: "error", action: "searchQueryUser", code: 400, data: null, message: "لا توجد مستخدمون" })
     }
     static async getNewNotification(userName: string ) {
         const notification = await db.notification.findFirst({
@@ -266,9 +319,9 @@ export default class User {
             }
         })
         if (notification) {
-            return sendResponseServer({ status: "success", data: notification, action: "getNewNotification", message: "توجد إشعارات جديدة" })
+            return sendResponseServer<notificationResponse>({ status: "success", action: "getNewNotification", code: 200, data: notification, message: "توجد إشعارات جديدة" })
         }
-        return sendResponseServer({ status: "error", action: "getNewNotification", message: "لا توجد إشعارات جديدة" })
+        return sendResponseServer<null>({ status: "error", action: "getNewNotification", code: 400, data: null, message: "لا توجد إشعارات جديدة" })
     }
     static async getNotifications({ username, type = "all", page = 1 }: { username: string, type?: string, page?: number }) {
         const countAll = await db.notification.count({
@@ -287,7 +340,7 @@ export default class User {
         })
         const notificationlimit = 50
         if (type !== "all") {
-            let count = await db.notification.count({
+            const count = await db.notification.count({
                 where: {
                     notificationFor: {
                         username
@@ -301,7 +354,7 @@ export default class User {
                 }
 
             })
-            let notifications = await db.notification.findMany({
+            const notifications = await db.notification.findMany({
                 where: {
                     notificationFor: {
                         username
@@ -316,6 +369,13 @@ export default class User {
                 select: {
                     id: true,
                     createdAt: true,
+                    updatedAt: true,
+                    userId: true,
+                    notificationForId: true,
+                    postId: true,
+                    repliedOnCommentId: true,
+                    commentId: true,
+                    commentReplyId: true,
                     comment: {
                         select: {
                             id: true,
@@ -345,7 +405,6 @@ export default class User {
                     repliedOnComment: {
                         select: {
                             id: true,
-                            
                             content: true,
                             commentedBy: {
                                 select: {
@@ -353,7 +412,7 @@ export default class User {
                                     username: true,
                                     photo: true
                                 }
-                            },
+                            }
                         }
                     },
                     user: {
@@ -379,14 +438,12 @@ export default class User {
                             }
                         }
                     }
-
                 },
                 orderBy: {
                     createdAt: "desc"
                 },
                 take: notificationlimit,
                 skip: (page - 1) * notificationlimit,
-
             })
 
             await db.notification.updateMany({
@@ -407,10 +464,10 @@ export default class User {
             })
 
             if (notifications.length) {
-                return sendResponseServer({ status: "success", action: "getNotifications", data: { results: notifications, count, page, countAll }, message: "تم جلب الإشعارات بنجاح 👍" })
+                return sendResponseServer<{results: notificationResponse[], count: number, page: number, countAll: number}>({ status: "success", action: "getNotifications", code: 200, data: { results: notifications, count, page, countAll }, message: "تم جلب الإشعارات بنجاح 👍" })
             }
         } else {
-            let count = await db.notification.count({
+            const count = await db.notification.count({
                 where: {
                     notificationFor: {
                         username
@@ -423,7 +480,7 @@ export default class User {
                 }
 
             })
-            let notifications = await db.notification.findMany({
+            const notifications = await db.notification.findMany({
                 where: {
                     notificationFor: {
                         username
@@ -437,6 +494,13 @@ export default class User {
                 select: {
                     id: true,
                     createdAt: true,
+                    updatedAt: true,
+                    userId: true,
+                    notificationForId: true,
+                    postId: true,
+                    repliedOnCommentId: true,
+                    commentId: true,
+                    commentReplyId: true,
                     comment: {
                         select: {
                             id: true,
@@ -499,14 +563,12 @@ export default class User {
                             }
                         }
                     }
-
+                },
+                orderBy: {
+                    createdAt: "desc"
                 },
                 take: notificationlimit,
                 skip: (page - 1) * notificationlimit,
-                orderBy: {
-                    createdAt: "desc"
-                }
-
             })
 
             await db.notification.updateMany({
@@ -526,13 +588,13 @@ export default class User {
             })
 
             if (notifications.length) {
-                return sendResponseServer({ status: "success", action: "getNotifications", data: { results: notifications, count, page, countAll }, message: "تم جلب الإشعارات بنجاح 👍" })
+                return sendResponseServer<{results: notificationResponse[], count: number, page: number, countAll: number}>({ status: "success", action: "getNotifications", code: 200, data: { results: notifications, count, page, countAll }, message: "تم جلب الإشعارات بنجاح 👍" })
             }
         }
 
-        return sendResponseServer({ status: "error", action: "getNotifications", data: {countAll}, message: "لا توجد إشعارات" })
+        return sendResponseServer<null>({ status: "error", action: "getNotifications", code: 400, data: null, message: "لا توجد إشعارات" })
     }
-    static async addReplyCommentNotification({ notificationId, postId, user, replyingTo, comment }: { notificationId: string, postId: string, user: any, replyingTo: string, comment: string }) {
+    static async addReplyCommentNotification({ notificationId, postId, user, replyingTo, comment }: { notificationId: string, postId: string, user: userResponse, replyingTo: string, comment: string }) {
         if(postId && notificationId){
             const getPost = await db.post.findFirst({
                 where: {
@@ -557,13 +619,13 @@ export default class User {
             })
             if (getNotification) {
                 if (!comment.length) {
-                    return sendResponseServer({ status: "error", action: "addReplyCommentNotification", message: "محتوى التعليق مطلوب" })
+                    return sendResponseServer<null>({ status: "error", action: "addReplyCommentNotification", code: 400, data: null, message: "محتوى التعليق مطلوب" })
                 }
                 if (!replyingTo.length) {
-                    return sendResponseServer({ status: "error", action: "addReplyCommentNotification", message: "التعليق المردود عليه مطلوب" })
+                    return sendResponseServer<null>({ status: "error", action: "addReplyCommentNotification", code: 400, data: null, message: "التعليق المردود عليه مطلوب" })
                 }
                 if (!getPost) {
-                    return sendResponseServer({ status: "error", action: "addReplyCommentNotification", message: "التعليق غير موجود" })
+                    return sendResponseServer<null>({ status: "error", action: "addReplyCommentNotification", code: 400, data: null, message: "التعليق غير موجود" })
                 }
                 const getComment = await db.comment.create({
                     data: {
@@ -601,10 +663,10 @@ export default class User {
                         }
                     }
                 })
-                return sendResponseServer({ status: "success", action: "addReplyCommentNotification", message: "تم الرد على التعليق بنجاح 👍" })
+                return sendResponseServer<null>({ status: "success", action: "addReplyCommentNotification", code: 200, data: null, message: "تم الرد على التعليق بنجاح 👍" })
             }
         }
-        return sendResponseServer({ status: "error", action: "addReplyCommentNotification", message: "حدث خطأ ما بسبب هذا التعليق" })
+        return sendResponseServer<null>({ status: "error", action: "addReplyCommentNotification", code: 400, data: null, message: "حدث خطأ ما بسبب هذا التعليق" })
     }
     static async uploadImg(image: File, username: string) {
         const folder = "avatars"
@@ -624,15 +686,15 @@ export default class User {
         await db.user.update({
             where: { username }, data: { photo }
         })
-        return sendResponseServer({ status: "success", action: "updateUserPhoto", message: "تم تحديث صورة المستخدم بنجاح 👍" })
+        return sendResponseServer<null>({ status: "success", action: "updateUserPhoto", code: 200, data: null, message: "تم تحديث صورة المستخدم بنجاح 👍" })
     }
     static async changePassword(username: string, newPassword: string, currentPassword: string) {
         if (!currentPassword.length || !newPassword.length) {
-            return sendResponseServer({status: "error", action: "changePassword", code: 400, message: "املأ جميع الحقول."})
+            return sendResponseServer<null>({status: "error", action: "changePassword", code: 400, data: null, message: "املأ جميع الحقول."})
         } else if(newPassword.length < 8 ){
-            return sendResponseServer({status: "error", action: "changePassword", code: 400, message: "كلمة المرور الجديدة يجب أن تكون أطول من 8 أحرف."})
+            return sendResponseServer<null>({status: "error", action: "changePassword", code: 400, data: null, message: "كلمة المرور الجديدة يجب أن تكون أطول من 8 أحرف."})
         } else if(newPassword.length > 16 ){
-            return sendResponseServer({status: "error", action: "changePassword", code: 400, message: "كلمة المرور الجديدة يجب أن تكون أقل من 16 أحرف."})
+            return sendResponseServer<null>({status: "error", action: "changePassword", code: 400, data: null, message: "كلمة المرور الجديدة يجب أن تكون أقل من 16 أحرف."})
         }
         const user = await db.user.findUnique({where: {username}})
 
@@ -648,9 +710,9 @@ export default class User {
                         password: hashedPassword
                     }
                 })
-                return sendResponseServer({status: "success", action: "changePassword", code: 200, message: "تم تغيير كلمة المرور بنجاح."})
+                return sendResponseServer<null>({status: "success", action: "changePassword", code: 200, data: null, message: "تم تغيير كلمة المرور بنجاح."})
             }
-            return sendResponseServer({status: "error", action: "changePassword", code: 400, message: "كلمة المرور الحالية غير صحيحة."})
+            return sendResponseServer<null>({status: "error", action: "changePassword", code: 400, data: null, message: "كلمة المرور الحالية غير صحيحة."})
         }
         return redirect("/")
     }

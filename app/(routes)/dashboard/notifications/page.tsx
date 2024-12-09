@@ -42,6 +42,7 @@ async function filterNotifications(type: string) {
 
 export default async function NotificationsPage() {
     const user = await getUserAuthenticated()
+    if(!user) return redirect("/auth/signin")
     const notfication = await User.getNotifications({ username: user.username })
     return (
         <NotificationsIndex notifications={notfication} onLoadMoreNotifications={loadMoreNotifications} onFilterNotifications={filterNotifications} />

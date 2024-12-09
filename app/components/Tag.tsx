@@ -2,35 +2,36 @@
 import toast from "react-hot-toast"
 import { useDispatch, useSelector } from "react-redux"
 import { postActions } from "@/app/redux/slices/postSlice"
+import { RootState } from "@/app/redux/store"
 
-const Tag = ({tag, tagIndex}) => {
-    const post = useSelector(state => state.post)
+const Tag = ({tag, tagIndex}: {tag: string, tagIndex: number}) => {
+    const post = useSelector((state: RootState) => state.post)
     const dispatch = useDispatch()
 
     const handelDeleteTag = () => {
-        let tags = post.tags.filter(t => t !== tag)
+        const tags = post.tags.filter((t: string) => t !== tag)
         dispatch(postActions.setTags(tags))
     }
 
-    const handelEditTag = (e) => {        
+    const handelEditTag = (e: React.KeyboardEvent) => {        
         if(e.keyCode === 13){
             e.preventDefault()
-            const currentTag = e.target.innerText
-            let tags = [...post.tags ] 
+            const currentTag = (e.target as HTMLElement).innerText
+            const tags = [...post.tags ] 
             if(currentTag.length){   
                 tags[tagIndex] = currentTag
             } else {
-                toast.error(`الوسم لا يمكن أن يكون فارغا.`)
-                e.target.innerText = tags[tagIndex]
+                toast.error(`الوسم لا يمكن أن يكون فارغا.`);
+                (e.target as HTMLElement).innerText = tags[tagIndex]
             }
-            dispatch(postActions.setTags(tags))
-            e.target.setAttribute("contentEditable", false)
+            dispatch(postActions.setTags(tags));
+            (e.target as HTMLElement).setAttribute("contentEditable", "false")
         }
     }
 
-    const handelAddEditable = (e) => {
-        e.target.setAttribute("contentEditable", true)
-        e.target.focus()
+    const handelAddEditable = (e: React.MouseEvent<HTMLParagraphElement>) => {
+        (e.target as HTMLElement).setAttribute("contentEditable", "true");
+        (e.target as HTMLElement).focus()
     }
 
     return (

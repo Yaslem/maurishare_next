@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import UsersIndex from './index'
 import { getUserAuthenticated } from '@/app/services/auth.server'
 import AnimationWrapper from '@/app/components/AnimationWrapper'
-import User from '@/app/controllers/User.server'
+import User, { userResponse } from '@/app/controllers/User.server'
 
 export const metadata: Metadata = {
   title: 'المستخدمون | لوحة التحكم',
@@ -28,9 +28,9 @@ export const metadata: Metadata = {
 }
 
 export default async function UsersPage() {
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & { role: "ADMIN" | "USER" } | null
   
-  if (user.role !== "ADMIN") {
+  if (user?.role !== "ADMIN") {
     redirect('/')
   }
 
@@ -39,7 +39,7 @@ export default async function UsersPage() {
   return (
     <AnimationWrapper>
       <h1 className="max-md:hidden">المستخدمون</h1>
-      <UsersIndex users={users.data} />
+      <UsersIndex users={users?.data ?? []} />
     </AnimationWrapper>
   )
 }

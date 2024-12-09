@@ -6,6 +6,7 @@ import { getUserAuthenticated } from "@/app/services/auth.server"
 import { NotAllowed } from "@/app/components/NotAllowed"
 import IndexPostCreatePage from "./index"
 import Post from "@/app/controllers/Post.server"
+import { userResponse } from "@/app/controllers/User.server"
 
 export const metadata: Metadata = {
     title: "كتابة منشور جديد | موريشير - منصة المحتوى الموريتاني",
@@ -46,21 +47,21 @@ export const metadata: Metadata = {
 }
 
 
-export async function uploadBanner(img: File) {
+async function uploadBanner(img: File) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_create_post: boolean}
   if (!user) redirect("/auth/signin")
   if (!user.can_create_post) redirect("/")
   const imgUrl = await Post.uploadImgPost(img)
   if(imgUrl) {
-    return { status: "success", location: imgUrl }
+    return { status: "success", location: imgUrl, message: null }
   }
-  return { status: "error", message: "حدث خطأ ما أثناء تحميل الصورة" }
+  return { status: "error", message: "حدث خطأ ما أثناء تحميل الصورة", location: null }
 }
 
-export async function createPost({img, title, des, tags, content, draft}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean}) {
+async function createPost({img, title, des, tags, content, draft}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean}) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_create_post: boolean}
   if (!user) redirect("/auth/signin")
   if (!user.can_create_post) redirect("/")
   
@@ -77,9 +78,9 @@ export async function createPost({img, title, des, tags, content, draft}: {img: 
   })
 }
 
-export async function updatePost({img, title, des, tags, content, draft, id}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean, id: string}) {
+async function updatePost({img, title, des, tags, content, draft, id}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean, id: string}) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_create_post: boolean}
   if (!user) redirect("/auth/signin")
   if (!user.can_create_post) redirect("/")
 
@@ -89,8 +90,7 @@ export async function updatePost({img, title, des, tags, content, draft, id}: {i
 }
 
 export default async function CreatePostPage() {
-  const user = await getUserAuthenticated()
-  
+  const user = await getUserAuthenticated() as userResponse & {can_create_post: boolean}
   if (!user) {
     redirect("/auth/signin")
   }
@@ -99,5 +99,5 @@ export default async function CreatePostPage() {
     return <NotAllowed message="عفوا، لقد تم منعك من النشر، رجاء تواصل مع إدارة الموقع." />
   }
 
-  return <IndexPostCreatePage onCreate={createPost} onUpload={uploadBanner} onUpdate={updatePost} user={user} />
+  return <IndexPostCreatePage onCreate={createPost} onUpload={uploadBanner} onUpdate={updatePost} />
 }

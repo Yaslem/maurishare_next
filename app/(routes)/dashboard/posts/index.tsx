@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import AnimationWrapper from '@/app/components/AnimationWrapper'
 import ManageDraftPost from '@/app/components/ManageDraftPost'
@@ -9,6 +8,25 @@ import ManagePublishedPostCard from '@/app/components/ManagePublishedPostCard'
 import NoDataMessage from '@/app/components/NoDataMessage' 
 import InPageNavigation from '@/app/components/inPageNavigation'
 import LoadMoreDataBtn from '@/app/components/LoadMoreDataBtn'
+import { PostResponse } from '@/app/controllers/Post.server'
+import { userResponse } from '@/app/controllers/User.server'
+import { sendResponseServer } from '@/app/helpers/SendResponse.server'
+
+interface DashboardPostsIndexProps {
+  onSearchPost: (value: string) => Promise<{
+    posts: Awaited<ReturnType<typeof sendResponseServer<{page: number, count: number, results: PostResponse[]} | null>>>,
+    drafts: Awaited<ReturnType<typeof sendResponseServer<{page: number, count: number, results: PostResponse[]} | null>>>
+  }>,
+  onDeletePost: (postId: string) => Promise<Awaited<ReturnType<typeof sendResponseServer<{postId: string} | null>>>>,
+  onLoadMorePosts: ({ 
+    type, 
+    page, 
+    username 
+  }: { type: 'posts' | 'drafts', page: number, username: string }) => Promise<Awaited<ReturnType<typeof sendResponseServer<{page: number, count: number, results: PostResponse[]} | null>>>>,
+  initialPosts: Awaited<ReturnType<typeof sendResponseServer<{page: number, count: number, results: PostResponse[]} | null>>>,
+  initialDrafts: Awaited<ReturnType<typeof sendResponseServer<{page: number, count: number, results: PostResponse[]} | null>>>,
+  user: userResponse & { can_delete_post: boolean },
+}
 
 export default function DashboardPostsIndex({ 
   onSearchPost,
@@ -17,21 +35,11 @@ export default function DashboardPostsIndex({
   initialPosts, 
   initialDrafts, 
   user,
-  defaultTab 
-}: {
-  onSearchPost: any,
-  onDeletePost: any,
-  onLoadMorePosts: any,
-  initialPosts: any,
-  initialDrafts: any,
-  user: any,
-  defaultTab: number
-}) {
+}: DashboardPostsIndexProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [drafts, setDrafts] = useState(initialDrafts)
   const [searchValue, setSearchValue] = useState('')
   const [isPending, startTransition] = useTransition()
-  const router = useRouter()
 
   const handleSearch = async (value: string) => {
     if (!value.trim()) {
@@ -39,8 +47,6 @@ export default function DashboardPostsIndex({
       setDrafts(initialDrafts)
       return
     }
-
-    console.log(value)
 
     startTransition(async () => {
       const result = await onSearchPost(value)
@@ -59,9 +65,7 @@ export default function DashboardPostsIndex({
         toast.error(result.message)
         return
       }
-
       toast.success(result.message)
-      router.refresh()
     })
   }
 
@@ -74,23 +78,29 @@ export default function DashboardPostsIndex({
       })
 
       if (type === 'posts') {
-        setPosts((prev : any) => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            page: result.data.page,
-            results: [...prev.data.results, ...result.data.results]
+        setPosts((prev : typeof posts) => {
+          if (!result.data || !prev.data) return prev
+          return {
+            ...prev,
+            data: {
+              ...prev.data,
+              page: result.data.page,
+              results: [...prev.data.results, ...result.data.results]
+            }
           }
-        }))
+        })
       } else {
-        setDrafts((prev : any) => ({
-          ...prev,
-          data: {
+        setDrafts((prev : typeof drafts) => {
+          if (!result.data || !prev.data) return prev
+          return {
+            ...prev,
+            data: {
             ...prev.data,
             page: result.data.page,
             results: [...prev.data.results, ...result.data.results]
+            }
           }
-        }))
+        })
       }
     })
   }
@@ -114,22 +124,24 @@ export default function DashboardPostsIndex({
       </div>
 
       <InPageNavigation 
-        defaultActiveIndex={defaultTab} 
+        defaultActiveIndex={0} 
         routes={["المنشورة", "المسودة"]}
+        defaultHidden={[]}
       >
         {posts.status !== "error" ? (
           <>
-            {posts.data.results.map((post : any, i : number) => (
+            {posts?.data?.results.map((post: PostResponse, i : number) => (
               <AnimationWrapper key={post.id} transition={{ delay: i * 0.04 }}>
                 <ManagePublishedPostCard 
-                  user={user} 
+                  user={user as userResponse & { can_delete_post: boolean, role: string } | null} 
                   post={post}
-                  onDeletePost={() => handleDelete(post.id)}
+                  onDeletePost={handleDelete}
                 />
               </AnimationWrapper>
             ))}
             <LoadMoreDataBtn
-              getDataPagination={() => handleLoadMore('posts', posts.data.page + 1)}
+              isPending={isPending}
+              getDataPagination={() => handleLoadMore('posts', posts.data?.page ?? 1 + 1)}
               state={posts}
             />
           </>
@@ -139,17 +151,18 @@ export default function DashboardPostsIndex({
 
         {drafts.status !== "error" ? (
           <>
-            {drafts.data.results.map((post : any, i : number) => (
+            {drafts.data?.results.map((post: PostResponse, i : number) => (
               <AnimationWrapper key={post.id} transition={{ delay: i * 0.04 }}>
                 <ManageDraftPost 
                   post={post} 
                   index={i + 1}
-                  onDeletePost={() => handleDelete(post.id)}
+                  onDeletePost={handleDelete}
                 />
               </AnimationWrapper>
             ))}
             <LoadMoreDataBtn
-              getDataPagination={() => handleLoadMore('drafts', drafts.data.page + 1)}
+              isPending={isPending}
+              getDataPagination={() => handleLoadMore('drafts', drafts.data?.page ?? 1 + 1)}
               state={drafts}
             />
           </>

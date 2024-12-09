@@ -7,10 +7,10 @@ import { useEffect, useState } from "react"
 import NavigationPanel from "./NavigationPanel"
 import { useDispatch } from "react-redux"
 import { userActions } from "../redux/slices/userSlice"
-import { type User } from "@prisma/client"
+import { type userResponse } from "@/app/controllers/User.server"
 
 interface NavbarProps {
-    user: User | null
+    user: userResponse | null
     newNotification: boolean
 }
 

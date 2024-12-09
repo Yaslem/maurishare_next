@@ -4,10 +4,9 @@ import { Toaster } from 'react-hot-toast'
 import { Provider } from 'react-redux'
 import store from './redux/store'
 import Progressbar from './components/Progressbar'
-import { type User } from '@prisma/client'
+import { type userResponse } from '@/app/controllers/User.server'
 
-
-export default function ReduxUI({children, newNotification, user}: {children: React.ReactNode, newNotification: boolean, user: User | null}){
+export default function ReduxUI({children, newNotification, user}: {children: React.ReactNode, newNotification: boolean, user: userResponse | null}){
     return (
         <>
         <Progressbar />

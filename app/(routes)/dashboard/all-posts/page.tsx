@@ -5,11 +5,12 @@ import Post from '@/app/controllers/Post.server'
 import DashboardAllPostsIndex from './index'
 import { Metadata } from 'next'
 import { revalidatePath } from 'next/cache'
+import { type userResponse } from '@/app/controllers/User.server'
 
 export async function generateMetadata(): Promise<Metadata> {
   const posts = await Post.getPostsByAdmin({ page: 1 })
   return {
-    title: "الرئيسية - المنشورات" + ` (${posts.data.count})`,
+    title: "الرئيسية - المنشورات" + ` (${posts.data?.count ?? 0})`,
     description: "إدارة جميع المنشورات والمسودات في لوحة التحكم",
     robots: "noindex, nofollow",
     openGraph: {
@@ -48,13 +49,13 @@ async function loadMoreDrafts(page: number) {
 
 async function deletePost(postId: string) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_delete_post: boolean}
   if (!user.can_delete_post) redirect("/dashboard/posts")
   const response = await Post.delete({ postId, user })
   if (response.status === "success") {
     revalidatePath("/dashboard/all-posts")
   }
-  return response
+  return
 }
 
 async function publishPost(postId: string, value: boolean) {
@@ -67,7 +68,7 @@ async function publishPost(postId: string, value: boolean) {
 }
 
 export default async function DashboardAllPostsPage() {
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {role: string}
   
   if (user.role !== "ADMIN") {
     redirect("/")

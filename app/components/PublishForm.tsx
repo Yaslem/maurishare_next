@@ -2,25 +2,26 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { useEffect, useState, useTransition } from 'react'
+import { Dispatch, SetStateAction, useTransition } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 import AnimationWrapper from '@/app/components/AnimationWrapper'
 import Tag from '@/app/components/Tag'
 import { postActions } from '@/app/redux/slices/postSlice'
-
+import { type sendResponseServer } from '@/app/helpers/SendResponse.server'
+import { type PostResponse } from '@/app/controllers/Post.server'
+import { type RootState } from '@/app/redux/store'
 interface PublishFormProps {
-  setEditorState: (state: string) => void
-  onCreate?: (data: any) => Promise<any>
-  onUpdate?: (data: any) => Promise<any>
+  setEditorState: Dispatch<SetStateAction<string>>
+  onCreate?: ({img, title, des, tags, content, draft}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean}) => Promise<Awaited<ReturnType<typeof sendResponseServer<PostResponse | null>>>>
+  onUpdate?: ({id, img, title, des, tags, content, draft}: {id: string, img: string, title: string, des: string, tags: string[], content: string, draft: boolean}) => Promise<Awaited<ReturnType<typeof sendResponseServer<PostResponse | null>>>>
 }
 
 const PublishForm = ({ setEditorState, onCreate, onUpdate }: PublishFormProps) => {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const dispatch = useDispatch()
-  const post = useSelector((state: any) => state.post)
-  console.log(post)
+  const post = useSelector((state: RootState) => state.post)
   
   const characterLimit = 200
   const tagLimit = 10
@@ -29,14 +30,14 @@ const PublishForm = ({ setEditorState, onCreate, onUpdate }: PublishFormProps) =
     e.preventDefault()
     const loadingToast = toast.loading(post.action === 'create' ? "يتم النشر..." : "يتم التعديل...")
     startTransition(async () => {
-      const result = await (post.action === 'create' ? onCreate && onCreate({...post}) : onUpdate && onUpdate({...post, draft: false}))
+      const result = await (post.action === 'create' ? onCreate && onCreate({...post, draft: post.draft || false}) : onUpdate && onUpdate({...post, draft: false}))
       
       toast.dismiss(loadingToast)
-      if (result.status === 'error') {
+      if (result && result.status === 'error') {
         toast.error(result.message)
       } else {
-        toast.success(result.message)
-        router.push(`/post/${result.data.slug}`)
+        toast.success(result?.message || "تم النشر بنجاح")
+        router.push(`/post/${result?.data?.slug}`)
       }
     })
   }

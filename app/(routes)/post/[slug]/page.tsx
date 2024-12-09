@@ -6,28 +6,26 @@ import Post from "@/app/controllers/Post.server";
 import { getUserAuthenticated } from "@/app/services/auth.server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import ClientPost from "@/app/components/ClientPost";
+import ClientPost, { userResponseInPost } from "@/app/components/ClientPost";
+import { userResponse } from "@/app/controllers/User.server";
 
-async function likePost(slug: string, isLikedByUser: boolean) {
+async function likePost(slug: string, like: boolean) {
   "use server"
   const user = await getUserAuthenticated();
   if (!user) {
     redirect('/auth/signin');
   }
 
-
-  const isLikeUser = await Post.getIslikeUserPost({userId: user.id, slug: decodeURIComponent(slug)})
-
-
-  const response = await Post.likePost({userId: user.id, slug: decodeURIComponent(slug), isLikedByUser: !isLikeUser});
+  const response = await Post.likePost({userId: user.id, slug: decodeURIComponent(slug), isLikedByUser: like});
   if (response.status === "success") {
     revalidatePath(`/post/${slug}`);
   }
+  return response;
 }
 
-async function addCommentPost(slug: string, comment: string) {
+async function addCommentPost({slug, comment}: {slug: string, comment: string}) {
   "use server"
-  const user = await getUserAuthenticated();
+  const user = await getUserAuthenticated() as userResponse & {can_create_comment: boolean};
   if (!user) {
     redirect('/auth/signin');
   }
@@ -57,14 +55,14 @@ async function deleteCommentPost(slug: string, commentId: string) {
   return response;
 }
 
-async function addReplyCommentPost(slug: string, data: any) {
+async function addReplyCommentPost({slug, replyingTo, comment, statusReply}: {slug: string, replyingTo: string, comment: string, statusReply: "reply" | "repliedOnComment"}) {
   "use server"
   const user = await getUserAuthenticated();
   if (!user) {
     redirect('/auth/signin');
   } 
 
-  const response = await Post.addReplyCommentPost({userId: user.id, slug: decodeURIComponent(slug), replyingTo: data.replyingTo, comment: data.comment, statusReply: data.statusReply});
+  const response = await Post.addReplyCommentPost({userId: user.id, slug: decodeURIComponent(slug), replyingTo, comment, statusReply});
   if (response.status === "success") {
     revalidatePath(`/post/${slug}`);
   }
@@ -73,11 +71,8 @@ async function addReplyCommentPost(slug: string, data: any) {
 
 async function loadMoreComments(slug: string, page: number) {
   "use server"
-  const response = await Post.getCommentsPost({slug: decodeURIComponent(slug), page});
-  if (response.status === "success") {
-    return response;
-  }
-  return [];
+  return await Post.getCommentsPost({slug: decodeURIComponent(slug), page});
+  
 }
 
 
@@ -88,7 +83,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = (await params).slug
   const response = await Post.getPostBySlug({slug: decodeURIComponent(slug)});
-  if (response.status !== "success") return {};
+  if (response.status !== "success" || !response.data) return {};
 
   const {post} = response.data;
   
@@ -128,14 +123,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             type: "image/jpeg",
           }
         ],
-        tags: post.tags || [],
+        tags: post.tags?.map(tag => tag.name) || [],
     },
     twitter: {
         card: 'summary_large_image',
         title: `${post.title} | ${process.env.SITE_NAME}`,
         description: post.des || "",
         images: [post.banner || ""],
-        creator: '@' + (post.author.twitter || process.env.TWITTER_HANDLE),
+        creator: '@' + (post.author.socialLinks?.twitter || process.env.TWITTER_HANDLE),
         site: '@' + process.env.TWITTER_HANDLE,
     },
     alternates: {
@@ -145,10 +140,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PostSlug({ params }: Props) {
-  const user = await getUserAuthenticated();
+  const user = await getUserAuthenticated() as userResponse | null;
   const slug = (await params).slug
   const response = await Post.getPostBySlug({slug: decodeURIComponent(slug)});
-  if (response.status !== "success") notFound();
+  if (response.status !== "success" || !response.data) notFound();
 
   const [isLikeUser, comments] = await Promise.all([
     user ? Post.getIslikeUserPost({userId: user.id, slug: decodeURIComponent(slug)}) : false,
@@ -166,7 +161,7 @@ export default async function PostSlug({ params }: Props) {
       loadMoreComments={loadMoreComments}
       post={post}
       similar={similar}
-      user={user}
+      user={user as userResponseInPost | null}
       isLikeUser={isLikeUser}
       initialComments={comments}
     />

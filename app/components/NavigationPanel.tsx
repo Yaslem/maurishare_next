@@ -3,10 +3,11 @@
 import AnimationWrapper from "./AnimationWrapper"
 import Link from "next/link"
 import { useSelector } from "react-redux"
-import { logOut } from "../services/auth.server"
+import { logOut } from "@/app/services/auth.server"
+import { RootState } from "@/app/redux/store"
 
 const NavigationPanel = () => {
-    const user = useSelector((state: any) => state.user.data)
+    const user = useSelector((state: RootState) => state.user.data)
 
     const handleSignOut = async () => {
         await logOut();
@@ -18,13 +19,13 @@ const NavigationPanel = () => {
             transition={{duration: 0.2}}
         >
             <div className={"bg-white z-50 fixed left-0 border border-grey w-60 duration-200"}>
-                <Link href="/" className={"flex gap-2 link md:hidden pl-8 py-4"}>
+                <Link href="/post/create" className={"flex gap-2 link md:hidden pl-8 py-4"}>
                     <i className="fi fi-rr-edit"></i>
                     <p>اكتب</p>
                 </Link>
 
                 <Link 
-                    href={`/user/${user?.username}`} 
+                    href={`/user/${user.username}`} 
                     className={"flex gap-2 link md:hidden pl-8 py-4"}
                 >
                     <p>الملف الشخصي</p>
@@ -51,7 +52,7 @@ const NavigationPanel = () => {
                     className={"text-right p-4 hover:bg-grey w-full pr-8 py-4"}
                 >
                     <h1 className={"font-bold text-xl mb-1"}>تسجيل الخروج</h1>
-                    <p className={"text-dark-grey"}>@{user?.username}</p>
+                    <p className={"text-dark-grey"}>@{user.username}</p>
                 </button>
             </div>
         </AnimationWrapper>

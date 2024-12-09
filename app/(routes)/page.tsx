@@ -33,12 +33,7 @@ export const metadata: Metadata = {
         height: 630,
         alt: `${process.env.SITE_NAME} - منصة البحث العلمي الموريتانية`,
       }
-    ],
-    article: {
-      authors: [process.env.SITE_NAME],
-      tags: ['بحث علمي', 'دراسات عليا', 'موريتانيا', 'أكاديمي'],
-      publishedTime: new Date().toISOString(),
-    }
+    ]
   },
   twitter: {
     card: "summary_large_image",
@@ -89,6 +84,7 @@ export default async function HomePage() {
           <InPageNavigation 
             defaultHidden={["المنشورات الشائعة"]} 
             routes={["الرئيسية", "المنشورات الشائعة"]}
+            defaultActiveIndex={0}
           >
             <Suspense fallback={<Loader />}>
               <PostsList 

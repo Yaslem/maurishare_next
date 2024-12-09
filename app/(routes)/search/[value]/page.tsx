@@ -21,12 +21,14 @@ export async function generateMetadata({ params }: SearchPageProps): Promise<Met
       url: `${process.env.BASE_URL}/search/${searchValue}`,
       type: 'website',
     },
-    schema: {
-      '@context': 'https://schema.org',
-      '@type': 'SearchResultsPage',
-      'url': `${process.env.BASE_URL}/search/${searchValue}`,
-      'name': `نتائج البحث عن "${searchValue}"`,
-      'description': `اكتشف نتائج البحث عن "${searchValue}" في موقعنا. تصفح المقالات والمستخدمين المتعلقين.`,
+    other: {
+      schema: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SearchResultsPage',
+        'url': `${process.env.BASE_URL}/search/${searchValue}`,
+        'name': `نتائج البحث عن "${searchValue}"`,
+        'description': `اكتشف نتائج البحث عن "${searchValue}" في موقعنا. تصفح المقالات والمستخدمين المتعلقين.`,
+      })
     }
   }
 }

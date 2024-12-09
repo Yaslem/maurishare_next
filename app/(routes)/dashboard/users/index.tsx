@@ -2,18 +2,23 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { type User } from '@prisma/client'
+import { type userResponse } from '@/app/controllers/User.server'
+import NoDataMessage from '@/app/components/NoDataMessage'
 
 
 const TABLE_HEADERS = ["الصورة", "الاسم", "اسم المستخدم", "البريد", "خيارات"]
 
-export default function UsersIndex({ users }: { users: User[] }) {
+export default function UsersIndex({ users }: { users: userResponse[] }) {
   return (
     <div className="overflow-auto w-full border border-black/10 mt-4 rounded-lg">
-      <table className="w-full">
+      {
+        users.length === 0 ? (  
+          <NoDataMessage message="لا يوجد مستخدمين" />
+        ) : (
+          <table className="w-full">
         <thead>
           <tr>
-            {TABLE_HEADERS.map((name, i) => (
+            {TABLE_HEADERS.map((name: string, i: number) => (
               <th 
                 key={name}
                 className={`
@@ -28,7 +33,7 @@ export default function UsersIndex({ users }: { users: User[] }) {
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
+          {users.map((user: userResponse) => (
             <tr key={user.username} className="odd:border-b border-black/10">
               <td className="p-2">
                 <Image 
@@ -55,7 +60,9 @@ export default function UsersIndex({ users }: { users: User[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+          </table>
+        )
+      }
     </div>
   )
 }

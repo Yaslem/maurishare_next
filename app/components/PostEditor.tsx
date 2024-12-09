@@ -6,39 +6,54 @@ import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { postActions } from '@/app/redux/slices/postSlice';
 import { Editor } from '@tinymce/tinymce-react';
+import { RootState } from '@/app/redux/store';
+import { type sendResponseServer } from '@/app/helpers/SendResponse.server';
+import { type PostResponse } from '@/app/controllers/Post.server';
+import Image from 'next/image';
 
-const PostEditor = ({ setEditorState, onUpdate, onCreate, onUpload }: { setEditorState: (state: string) => void, onUpdate?: (data: any) => Promise<any>, onCreate?: (data: any) => Promise<any>, onUpload: (data: any) => Promise<any> }) => {
+
+interface PostEditorProps {
+    setEditorState: (state: string) => void
+    onCreate?: ({img, title, des, tags, content, draft}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean}) => Promise<Awaited<ReturnType<typeof sendResponseServer<PostResponse | null>>>>
+    onUpload: (img: File) => Promise<Awaited<{
+        status: string;
+        location: string | null;
+    }>>
+    onUpdate?: ({id, img, title, des, tags, content, draft}: {id: string, img: string, title: string, des: string, tags: string[], content: string, draft: boolean}) => Promise<Awaited<ReturnType<typeof sendResponseServer<PostResponse | null>>>>
+  }
+
+const PostEditor = ({ setEditorState, onUpdate, onCreate, onUpload }: PostEditorProps) => {
     const dispatch = useDispatch();
-    const post = useSelector((state: any) => state.post);
-    console.log(post)
+    const post = useSelector((state: RootState) => state.post);
     const [loadingToast, setLoadingToast] = useState<string | null>(null);
     const router = useRouter()
-    const handleBannerUpload = async (e: any) => {
-        const img = e.target.files[0];
+    const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        const img = files[0];
+        const fileSize = img.size / 1024 / 1024;
+        if (fileSize > 1) return toast.error("يجب أن لا يكون حجم الصورة أكبر من 1 ميجا");
         if (img) {
-            setLoadingToast(toast.loading("يتم تحميل الصورة..."));
+            const toastId = toast.loading("يتم تحميل الصورة...")
             dispatch(postActions.setImg(URL.createObjectURL(img)));
-            
-
             const response = await onUpload(img)
             if(response.status === "error") {
-                toast.error(response.message)
+                toast.dismiss(toastId || "")
+                toast.error("حدث خطأ ما")
                 return
             }
 
             if (response.location) {
+                toast.dismiss(toastId || "")
                 toast.success("تم تحميل الصورة بنجاح 👍.");
-                console.log(response.location)
                 dispatch(postActions.setImg(`/uploads/${response.location}`));
-                console.log(post.img)
             }
-            toast.dismiss(loadingToast || "")
         }
     };
 
-    const handleTitleChange = (e: any) => {
+    const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         dispatch(postActions.setTitle(e.target.value));
-        let input = e.target;
+        const input = e.target;
         input.style.height = "auto";
         input.style.height = input.scrollHeight + "px";
     };
@@ -59,8 +74,8 @@ const PostEditor = ({ setEditorState, onUpdate, onCreate, onUpload }: { setEdito
     const handleDraft = async () => {
         setLoadingToast(toast.loading("يتم الحفظ..."));
         const response = await (post.action === "create" ? onCreate && onCreate({...post, draft: true}) : onUpdate && onUpdate({...post, draft: true}))
-        if(response.status === "error") {
-            toast.error(response.message)
+        if(response?.status === "error") {
+            toast.error("حدث خطأ ما")
             return
         }
         toast.dismiss(loadingToast || "")
@@ -89,9 +104,9 @@ const PostEditor = ({ setEditorState, onUpdate, onCreate, onUpload }: { setEdito
                     <div className="relative aspect-video hover:opacity-80 bg-white border-4 border-grey">
                         <label htmlFor="uploadBanner">
                             {post.img.length ? (
-                                <img className="w-full h-full object-cover" src={post.img} />
+                                <Image className="w-full h-full object-cover" src={post.img} alt={post.title} width={360} height={200}/>
                             ) : (
-                                <img className="w-full h-full object-cover" src="/images/default_banner.png" />
+                                <Image className="w-full h-full object-cover" src="/images/default_banner.png" alt="default banner" width={360} height={200}/>
                             )}
                             <input
                                 className="opacity-0 absolute inset-0"
@@ -120,7 +135,11 @@ const PostEditor = ({ setEditorState, onUpdate, onCreate, onUpload }: { setEdito
                             language_url: "/lang/tinymce/ar.js",
                             language: "ar",
                             directionality: "rtl",
-                            images_upload_handler: handleBannerUpload as any,
+                            images_upload_handler: async (blobInfo) => {
+                                const response = await onUpload(new File([blobInfo.blob()], blobInfo.filename()));
+                                if (response.status === "error") throw new Error("حدث خطأ ما");
+                                return `/uploads/${response.location}`;
+                            },
                             image_caption: true,
                             image_title: true,
                             placeholder: "ابدأ بكتابة منشورك"

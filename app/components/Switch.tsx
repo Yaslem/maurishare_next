@@ -6,7 +6,7 @@ export function Switch(
         isTitle = false,
         checked,
         onChange
-    }) {
+    }: {title: string, value: string, name: string, isTitle: boolean, checked: boolean, onChange: () => void}) {
     return (
         <label className="relative inline-flex gap-2 justify-between items-center cursor-pointer">
             <input

@@ -1,4 +1,3 @@
-
 import { join } from "path";
 import { mkdir, stat, writeFile } from "fs/promises";
 import fs from "node:fs/promises";
@@ -18,7 +17,7 @@ export default class FileStorage {
         try {
             await stat(uploadDir);
         } catch (e) {
-            if (e.code === "ENOENT") {
+            if ((e as { code: string }).code === "ENOENT") {
                 await mkdir(uploadDir, { recursive: true });
             } else {
                 console.error(e);
@@ -35,7 +34,7 @@ export default class FileStorage {
     static async isExist({folder, file}: Args) {
         try {
             return (await fs.stat(`${this.rootPath}/${folder}/${file}`)).isFile();
-        } catch (e) {
+        } catch {
             return false;
         }
     }
@@ -44,7 +43,7 @@ export default class FileStorage {
         try {
             await fs.unlink(`${this.rootPath}/${folder}/${file}`);
             return true
-        } catch (e) {
+        } catch {
             return false;
         }
     }

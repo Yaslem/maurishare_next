@@ -1,9 +1,11 @@
+export const dynamic = 'force-dynamic'
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getUserAuthenticated } from "@/app/services/auth.server"
 import { NotAllowed } from "@/app/components/NotAllowed"
 import IndexPostEditPage from "./index"
 import Post from "@/app/controllers/Post.server"
+import { userResponse } from "@/app/controllers/User.server"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -12,13 +14,16 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const id = (await params).id
     const post = await Post.getPostById({id})
+    if(!post || !post.data) return {
+      title: "الصفحة غير موجودة"
+    }
     return {
         title: `تعديل  منشور - ${post.data.title}`,
         description: post.data.des,
         robots: "noindex, nofollow",
         openGraph: {
         title: `تعديل منشور - ${post.data.title}`,
-        description: post.data.des,
+        description: post.data.des || "",
         url: `${process.env.BASE_URL}/post/edit/${id}`,
         type: "website",
         siteName: "موريشير",
@@ -35,28 +40,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         twitter: {
             card: "summary_large_image",
             title: `تعديل منشور - ${post.data.title}`,
-            description: post.data.des,
+            description: post.data.des || "",
             images: [`${process.env.BASE_URL}/images/og-image.jpg`],
         }
     }
 }
 
 
-export async function uploadBanner(img: File) {
+async function uploadBanner(img: File) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_create_post: boolean}
   if (!user) redirect("/auth/signin")
   if (!user.can_create_post) redirect("/")
   const imgUrl = await Post.uploadImgPost(img)
   if(imgUrl) {
-    return { status: "success", location: imgUrl }
+    return { status: "success" as const, location: imgUrl }
   }
-  return { status: "error", message: "حدث خطأ ما أثناء تحميل الصورة" }
+  return { status: "error" as const, location: null }
 }
 
-export async function updatePost({img, title, des, tags, content, draft, id}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean, id: string}) {
+async function updatePost({img, title, des, tags, content, draft, id}: {img: string, title: string, des: string, tags: string[], content: string, draft: boolean, id: string}) {
   "use server"
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_update_post: boolean}
   if (!user) redirect("/auth/signin")
   if (!user.can_update_post) redirect("/")
 
@@ -66,7 +71,7 @@ export async function updatePost({img, title, des, tags, content, draft, id}: {i
 }
 
 export default async function EditPostPage({ params }: Props) {
-  const user = await getUserAuthenticated()
+  const user = await getUserAuthenticated() as userResponse & {can_update_post: boolean}
   const id = (await params).id
   const post = await Post.getPostById({id})
   if (!user) {
@@ -77,5 +82,5 @@ export default async function EditPostPage({ params }: Props) {
     return <NotAllowed message="عفوا، لقد تم منعك من التعديل، رجاء تواصل مع إدارة الموقع." />
   }
 
-  return <IndexPostEditPage post={post.data} onUpload={uploadBanner} onUpdate={updatePost} user={user} />
+  return <IndexPostEditPage post={post.data} onUpload={uploadBanner} onUpdate={updatePost}/>
 }

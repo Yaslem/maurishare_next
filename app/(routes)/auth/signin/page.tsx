@@ -5,26 +5,19 @@ import { isAuthenticated } from '@/app/services/auth.server'
 import { DEFAULT_LOGIN_REDIRECT } from '@/app/services/routes.server'
 import AuthServer from '@/app/controllers/Auth.server'
 
-// Server Action للتعامل مع تسجيل الدخول
+export const dynamic = 'force-dynamic'
+
 async function signIn(formData: FormData) {
   'use server'
   
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   
-  // التحقق من حالة تسجيل الدخول
   const isSignedIn = await isAuthenticated()
   if (isSignedIn) {
     redirect(DEFAULT_LOGIN_REDIRECT)
   }
-
-  try {
-    // استدعاء خدمة المصادقة
-    const response = await AuthServer.signIn(email, password)
-    return response
-  } catch (error) {
-    return { error: 'فشل تسجيل الدخول' }
-  }
+  return await AuthServer.signIn(email, password)
 }
 
 export const metadata: Metadata = {
@@ -46,7 +39,6 @@ export const metadata: Metadata = {
   },
 }
 
-// مكون الصفحة الرئيسي
 export default async function SignInPage() {  
   return <UserAuthForm type="sign-in" signIn={signIn} />
 }

@@ -3,29 +3,42 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import getDay from "../common/Date";
 import CommentField from "./CommentField";
+import { CommentResponse } from "@/app/controllers/Post.server";
+import { PostResponse } from "@/app/controllers/Post.server";
+import { userResponseInPost } from "./ClientPost";
+import { userResponse } from "@/app/controllers/User.server";
+import Image from "next/image";
 
-const CommentCard = ({ comment, user, post, onReply, onDeleteComment } : { comment: any, user: any, post: any, onReply: any, onDeleteComment: any }) => {
+interface CommentCardProps {
+    comment: CommentResponse & { commentedBy: userResponse }
+    user: userResponseInPost | null
+    post: PostResponse
+    onReply: ({comment, replyingTo, statusReply}: {comment: string, replyingTo: string, statusReply: "reply" | "repliedOnComment"}) => Promise<{status: string}>
+    onDeleteComment: (commentId: string) => Promise<void>
+}
+
+const CommentCard = ({ comment, user, post, onReply, onDeleteComment } : CommentCardProps) => {
     const [isReply, setIsReply] = useState({
         statsu: false,
         type: "comment",
-        id: 0
+        id: ""
     })
 
     const [isShowReply, setIsShowReply] = useState({
         statsu: false,
         type: "comment",
-        id: 0
+        id: ""
     })
 
-    const handelDeleteComment = async (id : number) => {
-        await onDeleteComment(id)
+    const handelDeleteComment = async (commentId : string) => {
+        await onDeleteComment(commentId)
     }
 
     return (
         <div className="w-full">
             <div className="border border-grey my-5 p-6 rounded-md">
                 <div className="flex gap-3 items-center mb-8">
-                    <img className="rounded-full w-8 h-8 object-cover" src={`/uploads/${comment.commentedBy.photo}`} />
+                    <Image className="rounded-full w-8 h-8 object-cover" src={`/uploads/${comment.commentedBy.photo}`} alt={comment.commentedBy.name} width={32} height={32}/>
                     <p className="line-clamp-1">{comment.commentedBy.name} @{comment.commentedBy.username}</p>
                     <p className="min-w-fit">{getDay(comment.createdAt)}</p>
                 </div>
@@ -38,7 +51,7 @@ const CommentCard = ({ comment, user, post, onReply, onDeleteComment } : { comme
                             setIsReply({
                                 statsu: !isReply.statsu,
                                 type: "comment",
-                                id: 0
+                                id: ""
                             })
                         }
                     }} className="underline">{isReply.statsu && isReply.type === "comment" ? "إخفاء" : "رد"}</button>
@@ -49,13 +62,13 @@ const CommentCard = ({ comment, user, post, onReply, onDeleteComment } : { comme
                                 setIsShowReply({
                                     statsu: !isShowReply.statsu,
                                     type: "comment",
-                                    id: 0
+                                    id: ""
                                 })
                             }} className="text-sm underline"> {comment.children.length && isShowReply.statsu ? "إخفاء" : "عرض"} الردود ({comment.children.length})</button>
                         }
                         {
                             user
-                                ? user.username === comment.commentedBy.username || user.username === post.author.username
+                                ? user.username === comment.commentedBy.username || user.username === post?.author.username
                                     ? <button onClick={() => handelDeleteComment(comment.id)} className="p-2 px-3 rounded-md border border-grey hover:bg-red/30 hover:text-red flex items-center">
                                         <i className="fi fi-rr-trash"></i>
                                     </button>
@@ -67,16 +80,18 @@ const CommentCard = ({ comment, user, post, onReply, onDeleteComment } : { comme
                 {
                     isReply.statsu && isReply.type === "comment"
                         ? <div className="mt-8">
-                            <CommentField onReply={onReply} onComment={() => {}} statusReply={"reply"} message={`أنت الآن ترد على تعليق @${comment.commentedBy.username}`} placeholder="اترك ردا..." user={user} replyingTo={comment.id} action={"رد"} />
+                            <CommentField onReply={onReply} statusReply={"reply"} message={`أنت الآن ترد على تعليق @${comment.commentedBy.username}`} placeholder="اترك ردا..." user={user} replyingTo={comment.id} action={"رد"} />
                         </div>
                         : null
                 }
                 {
                     comment.children.length && isShowReply.statsu
-                        ? comment.children.map((children : any, i : number) =>
+                        ? comment.children.filter((child): child is CommentResponse & { commentedBy: userResponse } => 
+                            child.commentedBy !== null
+                          ).map((children, i) =>
                             <div key={i} className="border mr-6 border-grey my-5 p-6 rounded-md">
                                 <div className="flex gap-3 items-center mb-8">
-                                    <img className="rounded-full w-8 h-8 object-cover" src={`/uploads/${children.commentedBy.photo}`} />
+                                    <Image className="rounded-full w-8 h-8 object-cover" src={`/uploads/${children.commentedBy.photo}`} alt={children.commentedBy.name} width={32} height={32}/>
                                     <p className="line-clamp-1">{children.commentedBy.name} @{children.commentedBy.username}</p>
                                     <p className="min-w-fit">{getDay(children.createdAt)}</p>
                                 </div>
@@ -119,16 +134,18 @@ const CommentCard = ({ comment, user, post, onReply, onDeleteComment } : { comme
                                 {
                                     isReply.statsu && isReply.type === "reply" && isReply.id === children.id
                                         ? <div className="mt-8">
-                                            <CommentField statusReply={"repliedOnComment"} message={`أنت الآن ترد على رد @${children.commentedBy.username}`} placeholder="اترك ردا..." user={user} replyingTo={children.id} action={"رد"} />
+                                            <CommentField statusReply={"repliedOnComment"} onReply={onReply} message={`أنت الآن ترد على رد @${children.commentedBy.username}`} placeholder="اترك ردا..." user={user} replyingTo={children.id} action={"رد"} />
                                         </div>
                                         : null
                                 }
                                 {
                                     children.children.length && isShowReply.id === children.id && isShowReply.statsu && isShowReply.type === "reply"
-                                        ? children.children.map((c : any, i : number) =>
+                                        ? children.children.filter((child): child is CommentResponse & { commentedBy: userResponse } => 
+                                            child.commentedBy !== null
+                                          ).map((c, i) =>
                                             <div key={i} className="border mr-4 border-grey my-5 p-6 rounded-md">
                                                 <div className="flex gap-3 items-center mb-8">
-                                                    <img className="rounded-full w-8 h-8 object-cover" src={`/uploads/${c.commentedBy.photo}`} />
+                                                    <Image className="rounded-full w-8 h-8 object-cover" src={`/uploads/${c.commentedBy.photo}`} alt={c.commentedBy.name} width={32} height={32}/>
                                                     <p className="line-clamp-1">{c.commentedBy.name} @{c.commentedBy.username}</p>
                                                     <p className="min-w-fit">{getDay(c.createdAt)}</p>
                                                 </div>
